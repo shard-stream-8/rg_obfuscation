@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 4, in <module>
+    train("config.yaml")
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 109, in train
+    rollout_logger.log_rollout(
+  File "/root/rg_obfuscation/reinforce/rollout_logger.py", line 27, in log_rollout
+    "config": dict(self.config),
+ValueError: dictionary update sequence element #0 has length 10; 2 is required
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 4, in <module>
+    train("config.yaml")
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 109, in train
+    rollout_logger.log_rollout(
+  File "/root/rg_obfuscation/reinforce/rollout_logger.py", line 27, in log_rollout
+    "config": dict(self.config),
+ValueError: dictionary update sequence element #0 has length 10; 2 is required

@@ -1,0 +1,92 @@
+_wandb:
+    value:
+        cli_version: 0.21.0
+        e:
+            o5a9obd7ts5ye81i49xk7rmvbvihj5cr:
+                codePath: train.py
+                codePathLocal: train.py
+                cpu_count: 80
+                cpu_count_logical: 160
+                cudaVersion: "12.4"
+                disk:
+                    /:
+                        total: "214748364800"
+                        used: "29538541568"
+                email: marksluke076@gmail.com
+                executable: /usr/bin/python
+                git:
+                    remote: https://github.com/shard-stream-8/rg_obfuscation.git
+                gpu: NVIDIA H200
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Hopper
+                      cudaCores: 16896
+                      memoryTotal: "150754820096"
+                      name: NVIDIA H200
+                      uuid: GPU-becba8c5-7e47-2a4e-0471-af4a2aadf2a0
+                host: c099a6a4dfc9
+                memory:
+                    total: "2164132716544"
+                os: Linux-6.8.0-52-generic-x86_64-with-glibc2.35
+                program: /root/rg_obfuscation/train.py
+                python: CPython 3.10.12
+                root: /root/rg_obfuscation
+                startedAt: "2025-07-07T23:16:14.349563Z"
+                writerId: o5a9obd7ts5ye81i49xk7rmvbvihj5cr
+        m: []
+        python_version: 3.10.12
+        t:
+            "1":
+                - 1
+                - 5
+                - 11
+                - 41
+                - 49
+                - 53
+                - 71
+            "2":
+                - 1
+                - 5
+                - 11
+                - 41
+                - 49
+                - 53
+                - 71
+            "3":
+                - 16
+                - 61
+            "4": 3.10.12
+            "5": 0.21.0
+            "6": 4.53.1
+            "10":
+                - 20
+            "12": 0.21.0
+            "13": linux-x86_64
+batch_size:
+    value: 8
+custom_verifier_path:
+    value: null
+device:
+    value: cuda
+learning_rate:
+    value: "1e-5"
+max_new_tokens:
+    value: 64
+max_thinking_tokens:
+    value: 32
+min_thinking_tokens:
+    value: 0
+model_name:
+    value: Qwen/Qwen3-4B
+num_episodes:
+    value: 10000
+seed:
+    value: 42
+task_name:
+    value: leg_counting
+use_kl_penalty:
+    value: true
+wandb_entity:
+    value: null
+wandb_project:
+    value: qwen3-reinforce-reasongym

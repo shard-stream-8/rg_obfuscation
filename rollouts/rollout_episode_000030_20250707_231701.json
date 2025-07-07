@@ -1,0 +1,78 @@
+{
+  "episode": 30,
+  "timestamp": "2025-07-07T23:17:56.375522",
+  "config": {
+    "model_name": "Qwen/Qwen3-4B",
+    "task_name": "leg_counting",
+    "custom_verifier_path": null,
+    "batch_size": 8,
+    "learning_rate": "1e-5",
+    "num_episodes": 10000,
+    "wandb_project": "qwen3-reinforce-reasongym",
+    "wandb_entity": null,
+    "use_kl_penalty": true,
+    "min_thinking_tokens": 0,
+    "max_thinking_tokens": 32,
+    "max_new_tokens": 64,
+    "seed": 42,
+    "device": "cuda"
+  },
+  "rollout": {
+    "prompts": [
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 6 jellyfishs, 6 elephants, 13 giraffes, 2 cockroachs, 14 scorpions?\n",
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 4 fireflys, 10 cockroachs, 4 elephants, 11 snakes, 3 beetles, 4 butterflys?\n",
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 15 snakes, 14 elephants, 11 giraffes, 7 insects, 4 dogs, 14 praying mantiss?\n",
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 6 crabs, 2 grasshoppers, 3 woodlouses, 15 ducks, 12 flatworms, 4 lions, 1 ant?\n",
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 1 shrimp, 15 spiders, 3 cows, 13 beetles, 9 sheeps, 14 ants, 10 ducks, 9 humans, 15 grasshoppers, 4 lions?\n",
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 13 elephants, 8 grasshoppers, 10 bees?\n",
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 4 elephants, 15 spiders, 4 chickens?\n",
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 6 scorpions, 5 bees, 12 tigers, 4 chickens, 3 fireflys, 7 ducks, 9 sheeps, 5 insects, 13 praying mantiss, 15 shrimps?\n"
+    ],
+    "targets": [
+      "200",
+      "142",
+      "242",
+      "166",
+      "484",
+      "160",
+      "144",
+      "460"
+    ],
+    "thinking_contents": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "contents": [
+      "<think>\nOkay, let's see. I need to figure out the total number of legs for all these animals. The question gives me a list: 6 jellyfish, 6 elephants, 13 giraffes, 2 cockroachs, and 14 scorpions. Hmm, first,",
+      "<think>\nOkay, let me try to figure out how many legs there are in total for all these animals. So, the problem says I have 4 fireflies, 10 cockroaches, 4 elephants, 11 snakes, 3 beetles, and 4 butterflies. I need to count",
+      "<think>\nOkay, let's see. I need to figure out the total number of legs from all these animals. The list given is 15 snakes, 14 elephants, 11 giraffes, 7 insects, 4 dogs, and 14 praying mantises. Hmm, right.",
+      "<think>\nOkay, let me try to figure out how many legs there are in total for all these animals. So, the problem gives me a list of animals with their quantities, and I need to calculate the total number of legs. Let me start by recalling how many legs each of these animals typically has.\n\nFirst,",
+      "<think>\nOkay, let me try to figure out how many legs there are in total for all these animals. So, first, I need to remember how many legs each animal has. Let me list them out one by one.\n\nStarting with the shrimp. I think shrimp are crustaceans, right? They have ",
+      "<think>\nOkay, let's see. The problem is to count the total number of legs when given a list of animals. The specific numbers here are 13 elephants, 8 grasshoppers, and 10 bees. Hmm, I need to figure out how many legs each of these animals have and then",
+      "<think>\nOkay, let's see. The problem is to count the total number of legs when given a list of animals. The specific numbers here are 4 elephants, 15 spiders, and 4 chickens. I need to figure out how many legs each of these animals contribute and then add them all up.",
+      "<think>\nOkay, let's see. I need to figure out the total number of legs for all these animals. The list given is 6 scorpions, 5 bees, 12 tigers, 4 chickens, 3 fireflies, 7 ducks, 9 sheeps, 5 insects"
+    ],
+    "rewards": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "metrics": {
+      "loss": -0.0,
+      "reward_mean": 0.0,
+      "kl_penalty_mean": 0.0,
+      "reward_std": 0.0
+    }
+  }
+}

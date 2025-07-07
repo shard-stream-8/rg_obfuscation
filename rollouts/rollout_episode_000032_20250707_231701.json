@@ -1,0 +1,78 @@
+{
+  "episode": 32,
+  "timestamp": "2025-07-07T23:17:59.954966",
+  "config": {
+    "model_name": "Qwen/Qwen3-4B",
+    "task_name": "leg_counting",
+    "custom_verifier_path": null,
+    "batch_size": 8,
+    "learning_rate": "1e-5",
+    "num_episodes": 10000,
+    "wandb_project": "qwen3-reinforce-reasongym",
+    "wandb_entity": null,
+    "use_kl_penalty": true,
+    "min_thinking_tokens": 0,
+    "max_thinking_tokens": 32,
+    "max_new_tokens": 64,
+    "seed": 42,
+    "device": "cuda"
+  },
+  "rollout": {
+    "prompts": [
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 15 crabs, 6 fireflys, 2 cockroachs, 13 chickens, 15 ducks, 13 butterflys, 6 humans, 1 jellyfish, 15 beetles, 12 praying mantiss?\n",
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 6 humans, 6 wasps, 1 shrimp?\n",
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 9 beetles, 3 cats, 15 insects, 6 tigers, 1 cricket, 8 crabs, 3 humans, 15 horses?\n",
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 10 ants, 6 fireflys, 9 birds, 2 scorpions?\n",
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 13 crickets, 8 giraffes, 12 praying mantiss, 1 insect, 10 lions, 8 horses, 1 butterfly, 4 leechs, 15 elephants?\n",
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 15 snakes, 5 spiders, 1 dog, 14 deers, 12 insects, 9 beetles, 6 horses?\n",
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 2 dogs, 3 grasshoppers, 14 beetles, 3 spiders, 13 elephants, 14 starfishs, 8 lions, 8 birds, 4 crickets?\n",
+      "Your task is to count how many legs there are in total when given a list of animals.\n\nNow, how many legs are there in total if you have 4 giraffes, 1 horse, 15 dogs?\n"
+    ],
+    "targets": [
+      "506",
+      "58",
+      "332",
+      "130",
+      "326",
+      "250",
+      "328",
+      "80"
+    ],
+    "thinking_contents": [
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      "",
+      ""
+    ],
+    "contents": [
+      "<think>\nOkay, let's see. I need to figure out the total number of legs from all these animals. Hmm, first, I should probably list out each animal and how many legs they have. Let me start by recalling how many legs each of these creatures typically have.\n\nSo, the animals given are: cr",
+      "<think>\nOkay, let's see. The user wants to know the total number of legs from 6 humans, 6 wasps, and 1 shrimp. Hmm, I need to figure out how many legs each animal has and then multiply by the number of each.\n\nFirst, humans. I remember that humans have",
+      "<think>\nOkay, let's see. I need to figure out the total number of legs from all these animals. The problem gives me a list of animals with their quantities: 9 beetles, 3 cats, 15 insects, 6 tigers, 1 cricket, 8 crabs, ",
+      "<think>\nOkay, let's see. I need to figure out the total number of legs from these animals: 10 ants, 6 fireflies, 9 birds, and 2 scorpions. Hmm, first I should remember how many legs each of these animals has.\n\nStarting with ants. I know",
+      "<think>\nOkay, let's see. I need to figure out the total number of legs from all these animals. Hmm, first, I should probably list out each animal and how many of them there are, then multiply each by the number of legs they have. Then add them all up. Let me start by recalling",
+      "<think>\nOkay, let's see. I need to figure out the total number of legs from all these animals. Hmm, the problem gives me different animals with different numbers. Let me list them out again to make sure I don't miss any.\n\nSo, the animals are: 15 snakes, 5 spiders",
+      "<think>\nOkay, let's see. I need to figure out the total number of legs from all these animals. Hmm, first, I should probably list out each animal and how many there are, then multiply each by the number of legs they have. Let me start by recalling how many legs each animal typically has.",
+      "<think>\nOkay, let's see. I need to figure out the total number of legs from these animals: 4 giraffes, 1 horse, and 15 dogs. Hmm, first, I should remember how many legs each animal has.\n\nGiraffes, right? I think they have "
+    ],
+    "rewards": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "metrics": {
+      "loss": -0.0,
+      "reward_mean": 0.0,
+      "kl_penalty_mean": 0.0,
+      "reward_std": 0.0
+    }
+  }
+}
