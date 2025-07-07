@@ -1,6 +1,0 @@
-{"time":"2025-07-07T23:17:00.956117789Z","level":"INFO","msg":"stream: starting","core version":"0.21.0"}
-{"time":"2025-07-07T23:17:01.353463856Z","level":"INFO","msg":"stream: created new stream","id":"ostwl4tl"}
-{"time":"2025-07-07T23:17:01.353531037Z","level":"INFO","msg":"stream: started","id":"ostwl4tl"}
-{"time":"2025-07-07T23:17:01.353596125Z","level":"INFO","msg":"writer: Do: started","stream_id":"ostwl4tl"}
-{"time":"2025-07-07T23:17:01.35372671Z","level":"INFO","msg":"sender: started","stream_id":"ostwl4tl"}
-{"time":"2025-07-07T23:17:01.353858109Z","level":"INFO","msg":"handler: started","stream_id":"ostwl4tl"}
