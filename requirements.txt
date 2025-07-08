@@ -1,0 +1,6 @@
+torch
+transformers
+wandb
+pyyaml
+reasoning_gym
+accelerate
