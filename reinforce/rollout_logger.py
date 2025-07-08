@@ -21,10 +21,29 @@ class RolloutLogger:
                    thinking_contents: List[str], contents: List[str], 
                    rewards: List[float], loss: float, kl_penalty_mean: float):
         """Log a single rollout to JSON file."""
+        
+        # Helper function to convert tensors to serializable types
+        def make_serializable(obj):
+            if hasattr(obj, 'item'):  # PyTorch tensor
+                return obj.item()
+            elif hasattr(obj, 'tolist'):  # PyTorch tensor or numpy array
+                return obj.tolist()
+            elif isinstance(obj, dict):
+                return {k: make_serializable(v) for k, v in obj.items()}
+            elif isinstance(obj, (list, tuple)):
+                return [make_serializable(item) for item in obj]
+            else:
+                return obj
+        
+        # Convert config to serializable format
+        config_dict = {}
+        for k, v in self.config.items():
+            config_dict[k] = make_serializable(v)
+        
         rollout_data = {
             "episode": episode,
             "timestamp": datetime.now().isoformat(),
-            "config": {k: v for k, v in self.config.items()},
+            "config": config_dict,
             "rollout": {
                 "prompts": prompts,
                 "targets": targets,
@@ -42,6 +61,8 @@ class RolloutLogger:
         
         filename = f"rollout_episode_{episode:06d}_{self.run_id}.json"
         filepath = os.path.join(self.rollouts_dir, filename)
+        
+
         
         with open(filepath, 'w') as f:
             json.dump(rollout_data, f, indent=2)
