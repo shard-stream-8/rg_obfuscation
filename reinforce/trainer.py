@@ -80,8 +80,48 @@ def train(config_path: str = "config.yaml") -> None:
         batch_indices = [random.randrange(len(task)) for _ in range(config.batch_size)]
         batch        = [task[idx] for idx in batch_indices]
         
-        # Apply custom prompt template if specified
-        if hasattr(config, 'prompt_template') and config.prompt_template:
+        # Apply custom prompt if specified
+        if hasattr(config, 'custom_prompt_path') and config.custom_prompt_path:
+            if config.custom_prompt_path == "registry":
+                # Use the registry system
+                try:
+                    from prompts.registry import registry
+                    custom_prompt = registry.get_prompt(config.task_name)
+                    if custom_prompt is not None:
+                        # Use the custom prompt
+                        prompts = [
+                            custom_prompt(b["question"], examples=None, metadata={"task_name": config.task_name})
+                            if callable(custom_prompt) else custom_prompt(b["question"])
+                            for b in batch
+                        ]
+                        print(f"Loaded custom prompt for task '{config.task_name}' from registry")
+                    else:
+                        print(f"No custom prompt found in registry for task '{config.task_name}', using default")
+                        prompts = [b["question"] for b in batch]
+                except ImportError:
+                    print("Prompt registry not available, falling back to default prompt")
+                    prompts = [b["question"] for b in batch]
+            else:
+                # Use the old file-based approach
+                import importlib.util
+                import sys
+                spec = importlib.util.spec_from_file_location("custom_prompt", config.custom_prompt_path)
+                custom_prompt_module = importlib.util.module_from_spec(spec)
+                sys.modules["custom_prompt"] = custom_prompt_module
+                spec.loader.exec_module(custom_prompt_module)
+                
+                if hasattr(custom_prompt_module, 'prompt'):
+                    custom_prompt = custom_prompt_module.prompt
+                    prompts = [
+                        custom_prompt(b["question"], examples=None, metadata={"task_name": config.task_name})
+                        if callable(custom_prompt) else custom_prompt(b["question"])
+                        for b in batch
+                    ]
+                else:
+                    print(f"Warning: No 'prompt' function found in {config.custom_prompt_path}")
+                    prompts = [b["question"] for b in batch]
+        elif hasattr(config, 'prompt_template') and config.prompt_template:
+            # Fallback to the old prompt_template system
             prompts = [
                 create_custom_prompt(
                     original_question=b["question"],
