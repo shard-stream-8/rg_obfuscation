@@ -18,31 +18,41 @@ class AcrePrompt(BasePrompt):
         
         Args:
             question: The original question from the task
-            examples: List of example input-output pairs
+            examples: List of example input-output pairs (not used for ACRE as examples are in question)
             metadata: Additional metadata about the task (optional)
             
         Returns:
             The formatted prompt string
         """
-        # Format examples with boxed answers
-        formatted_examples = ""
-        if examples:
-            for example in examples:
-                input_ = ", ".join(" ".join(x) for x in example["input"])
-                output = example["output"]
-                if len(formatted_examples) > 0:
-                    formatted_examples += "\n"
-                formatted_examples += f"{input_} → boxed{{{output}}}"
+        # For ACRE task, the examples are already included in the question
+        # We need to extract them and format them properly
         
-        # Extract the new test case from the question
-        # The question format is: "New test case:\n{input}\n\nWhat is the detector light status?"
+        # Split the question into lines to parse it
         lines = question.split('\n')
+        
+        # Find the sections
+        previous_examples = []
         new_test_case = ""
+        in_examples_section = False
+        
         for i, line in enumerate(lines):
-            if line.strip() == "New test case:":
+            line = line.strip()
+            
+            if line == "Previous experimental results:":
+                in_examples_section = True
+                continue
+            elif line == "New test case:":
+                in_examples_section = False
+                # Get the next line as the new test case
                 if i + 1 < len(lines):
                     new_test_case = lines[i + 1].strip()
                 break
+            elif in_examples_section and line:
+                # This is an example line
+                previous_examples.append(line)
+        
+        # Format the examples (they should already be in the correct format)
+        formatted_examples = "\n".join(previous_examples)
         
         return f"""You are a researcher studying causal relationships using Blicket experiments. In these experiments, certain objects (called 'blickets') have the hidden property of activating a detector, causing its light to turn on.
 
@@ -55,8 +65,6 @@ Previous experimental results:
 
 New test case:
 {new_test_case}
-
-Answer immediately with boxed{{on}}, boxed{{off}}, or boxed{{undetermined}} and then provide a brief explanation.
 
 What is the detector light status?"""
 

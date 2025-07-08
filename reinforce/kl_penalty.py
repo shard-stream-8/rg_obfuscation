@@ -3,7 +3,7 @@ import torch.nn.functional as F
 
 def compute_kl_penalty(rewards_tensor, ref_model, config, full_ids, response_start_idx, response_logits, gradient_mask):
     kl_penalty = torch.zeros_like(rewards_tensor)
-    if ref_model is not None and config and getattr(config, 'use_kl_penalty', False):
+    if ref_model is not None and config:
         with torch.no_grad():
             ref_logits = ref_model(full_ids, return_dict=True).logits[:, response_start_idx:-1]
             current_log_probs = F.log_softmax(response_logits, dim=-1)

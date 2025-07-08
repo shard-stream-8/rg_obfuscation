@@ -36,16 +36,45 @@ def train(config_path: str = "config.yaml") -> None:
 
     # Reference network for KL penalty (frozen parameters) -----------------
     ref_model = None
-    if config.use_kl_penalty:
-        ref_model, _, _ = load_qwen3_model(config.model_name, config.device)
-        ref_model.eval()
-        for p in ref_model.parameters():
-            p.requires_grad = False
+    # Always load reference model for KL penalty calculation (even if coefficient is 0)
+    ref_model, _, _ = load_qwen3_model(config.model_name, config.device)
+    ref_model.eval()
+    for p in ref_model.parameters():
+        p.requires_grad = False
 
     # RL task & logging helpers -------------------------------------------
     task = load_task(config.task_name, config.custom_verifier_path)
     wandb_logger   = WandbLogger(config)
     rollout_logger = RolloutLogger(config)
+
+    # Load custom prompt at the start --------------------------------------
+    custom_prompt = None
+    if hasattr(config, 'custom_prompt_path') and config.custom_prompt_path:
+        if config.custom_prompt_path == "registry":
+            # Use the registry system
+            try:
+                from prompts.registry import registry
+                custom_prompt = registry.get_prompt(config.task_name)
+                if custom_prompt is not None:
+                    print(f"Loaded custom prompt for task '{config.task_name}' from registry")
+                else:
+                    print(f"No custom prompt found in registry for task '{config.task_name}', using default")
+            except ImportError:
+                print("Prompt registry not available, falling back to default prompt")
+        else:
+            # Use the old file-based approach
+            import importlib.util
+            import sys
+            spec = importlib.util.spec_from_file_location("custom_prompt", config.custom_prompt_path)
+            custom_prompt_module = importlib.util.module_from_spec(spec)
+            sys.modules["custom_prompt"] = custom_prompt_module
+            spec.loader.exec_module(custom_prompt_module)
+            
+            if hasattr(custom_prompt_module, 'prompt'):
+                custom_prompt = custom_prompt_module.prompt
+                print(f"Loaded custom prompt from {config.custom_prompt_path}")
+            else:
+                print(f"Warning: No 'prompt' function found in {config.custom_prompt_path}")
 
     # Optimiser ------------------------------------------------------------
     optimizer = torch.optim.AdamW(
@@ -80,46 +109,13 @@ def train(config_path: str = "config.yaml") -> None:
         batch_indices = [random.randrange(len(task)) for _ in range(config.batch_size)]
         batch        = [task[idx] for idx in batch_indices]
         
-        # Apply custom prompt if specified
-        if hasattr(config, 'custom_prompt_path') and config.custom_prompt_path:
-            if config.custom_prompt_path == "registry":
-                # Use the registry system
-                try:
-                    from prompts.registry import registry
-                    custom_prompt = registry.get_prompt(config.task_name)
-                    if custom_prompt is not None:
-                        # Use the custom prompt
-                        prompts = [
-                            custom_prompt(b["question"], examples=None, metadata={"task_name": config.task_name})
-                            if callable(custom_prompt) else custom_prompt(b["question"])
-                            for b in batch
-                        ]
-                        print(f"Loaded custom prompt for task '{config.task_name}' from registry")
-                    else:
-                        print(f"No custom prompt found in registry for task '{config.task_name}', using default")
-                        prompts = [b["question"] for b in batch]
-                except ImportError:
-                    print("Prompt registry not available, falling back to default prompt")
-                    prompts = [b["question"] for b in batch]
-            else:
-                # Use the old file-based approach
-                import importlib.util
-                import sys
-                spec = importlib.util.spec_from_file_location("custom_prompt", config.custom_prompt_path)
-                custom_prompt_module = importlib.util.module_from_spec(spec)
-                sys.modules["custom_prompt"] = custom_prompt_module
-                spec.loader.exec_module(custom_prompt_module)
-                
-                if hasattr(custom_prompt_module, 'prompt'):
-                    custom_prompt = custom_prompt_module.prompt
-                    prompts = [
-                        custom_prompt(b["question"], examples=None, metadata={"task_name": config.task_name})
-                        if callable(custom_prompt) else custom_prompt(b["question"])
-                        for b in batch
-                    ]
-                else:
-                    print(f"Warning: No 'prompt' function found in {config.custom_prompt_path}")
-                    prompts = [b["question"] for b in batch]
+        # Apply custom prompt if available
+        if custom_prompt is not None:
+            prompts = [
+                custom_prompt(b["question"], examples=None, metadata={"task_name": config.task_name})
+                if callable(custom_prompt) else custom_prompt(b["question"])
+                for b in batch
+            ]
         elif hasattr(config, 'prompt_template') and config.prompt_template:
             # Fallback to the old prompt_template system
             prompts = [
@@ -238,23 +234,22 @@ def train(config_path: str = "config.yaml") -> None:
         # Average log‑prob over the response positions --------------------
         logp_per_seq = (logp_taken * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-8)
 
-        if config.use_kl_penalty:
-            with torch.no_grad():
-                ref_logits = ref_model(full_ids).logits[:, :-1]
-            ref_log_probs = torch.log_softmax(ref_logits, dim=-1)
-            kl_token = torch.nn.functional.kl_div(
-                policy_log_probs,
-                ref_log_probs.exp(),
-                reduction="none",
-            ).sum(-1)  # (B, T-1)
-            kl_penalty = (kl_token * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-8)
-        else:
-            kl_penalty = torch.zeros_like(rewards)
+        # Always compute KL penalty for logging purposes
+        with torch.no_grad():
+            ref_logits = ref_model(full_ids).logits[:, :-1]
+        ref_log_probs = torch.log_softmax(ref_logits, dim=-1)
+        kl_token = torch.nn.functional.kl_div(
+            policy_log_probs,
+            ref_log_probs.exp(),
+            reduction="none",
+        ).sum(-1)  # (B, T-1)
+        kl_penalty = (kl_token * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-8)
 
         baseline  = rewards.mean().detach()
         advantage = rewards - baseline
 
         # Scale loss by gradient accumulation steps to maintain the same effective learning rate
+        # Only apply KL penalty to loss if coefficient > 0
         loss = -((advantage - config.kl_coefficient * kl_penalty.detach()) * logp_per_seq).mean() / gradient_accumulation_steps
         loss.backward()
 

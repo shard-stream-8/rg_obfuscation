@@ -2,7 +2,7 @@
 model_name: "Qwen/Qwen3-4B"
 
 # reasoning gym
-task_name: "list_functions"
+task_name: "acre"
 custom_verifier_path: "registry" # "registry" automatically finds the custom verifier in /verifiers for the selected task
 custom_prompt_path: "registry" # "registry" automatically finds the custom prompt in /prompts for the selected task
 
@@ -11,11 +11,10 @@ batch_size: 4
 gradient_accumulation_steps: 4
 learning_rate: 1e-5
 num_episodes: 1000
-use_kl_penalty: true
 kl_coefficient: 0.0
 min_thinking_tokens: 0
-max_thinking_tokens: 384
-max_new_tokens: 512
+max_thinking_tokens: 512
+max_new_tokens: 768
 seed: 42
 device: "cuda"
 
