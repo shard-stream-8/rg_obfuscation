@@ -19,8 +19,24 @@ rg_obfuscation/
 
 - **Entry point:** `train.py` — launches RL training using the configuration in `config.yaml`.
 - **Config:** Set model, task, verifier, prompt, and RL hyperparameters in `config.yaml`.
-- **Trainer:** RL logic is in `reinforce/trainer.py` (supports KL penalty, batch size, etc.).
+- **Trainer:** RL logic is in `reinforce/trainer.py` (supports KL penalty, batch size, gradient accumulation, etc.).
 - **Logging:** Integrated with Weights & Biases via `wandb_logger.py`.
+
+### Gradient Accumulation
+
+The training system supports gradient accumulation to effectively increase the batch size without increasing memory usage:
+
+- **Configuration:** Set `gradient_accumulation_steps` in `config.yaml` (default: 1)
+- **Effective batch size:** `batch_size × gradient_accumulation_steps`
+- **Memory efficient:** Gradients are accumulated over multiple episodes before updating model parameters
+- **Learning rate:** Automatically scaled to maintain the same effective learning rate
+
+Example configuration:
+```yaml
+batch_size: 16
+gradient_accumulation_steps: 4  # Effective batch size = 64
+learning_rate: 1e-5
+```
 
 ## Custom Verifiers
 

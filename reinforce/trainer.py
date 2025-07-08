@@ -63,6 +63,14 @@ def train(config_path: str = "config.yaml") -> None:
         min_thinking_tokens=config.min_thinking_tokens,
     )
 
+    # Gradient accumulation variables
+    gradient_accumulation_steps = getattr(config, 'gradient_accumulation_steps', 1)
+    accumulated_loss = 0.0
+    accumulated_rewards = []
+    accumulated_advantages = []
+    accumulated_kl_penalties = []
+    accumulated_episodes = []
+
     for episode in range(config.num_episodes):
         model.eval()
 
@@ -155,7 +163,10 @@ def train(config_path: str = "config.yaml") -> None:
         )
 
         model.train()
-        optimizer.zero_grad()
+        
+        # Only zero gradients on the first accumulation step
+        if (episode % gradient_accumulation_steps) == 0:
+            optimizer.zero_grad()
 
         # Build a tensor of prompt + generated tokens for every example ----
         full_ids_list, start_indices = [], []
@@ -203,37 +214,73 @@ def train(config_path: str = "config.yaml") -> None:
         baseline  = rewards.mean().detach()
         advantage = rewards - baseline
 
-        loss = -((advantage - config.kl_coefficient * kl_penalty.detach()) * logp_per_seq).mean()
+        # Scale loss by gradient accumulation steps to maintain the same effective learning rate
+        loss = -((advantage - config.kl_coefficient * kl_penalty.detach()) * logp_per_seq).mean() / gradient_accumulation_steps
         loss.backward()
 
-        # Optional: gradient clipping (helps with exploding variance)
-        torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+        # Store metrics for logging
+        accumulated_loss += loss.item() * gradient_accumulation_steps  # Scale back for logging
+        accumulated_rewards.extend(rewards.tolist())
+        accumulated_advantages.extend(advantage.tolist())
+        accumulated_kl_penalties.extend(kl_penalty.tolist())
+        accumulated_episodes.append({
+            'episode': episode,
+            'prompts': prompts,
+            'targets': targets,
+            'thinking_contents': thinking_contents,
+            'contents': contents,
+            'rewards': rewards.tolist(),
+            'loss': loss.item() * gradient_accumulation_steps,  # Scale back for logging
+            'kl_penalty_mean': kl_penalty.mean().item(),
+        })
 
-        # Zero out special‑token gradients so they stay fixed -------------
-        zero_special_token_grads(model, tokenizer)
-        optimizer.step()
+        # Perform optimizer step and logging at the end of accumulation
+        if (episode + 1) % gradient_accumulation_steps == 0 or episode == config.num_episodes - 1:
+            # Optional: gradient clipping (helps with exploding variance)
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
 
-        wandb_logger.log(
-            {
-                "loss":                loss.item(),
-                "reward_mean":         rewards.mean().item(),
-                "advantage_mean":      advantage.mean().item(),
-                "kl_penalty_mean":     kl_penalty.mean().item(),
-                "kl_penalty_scaled":  (config.kl_coefficient * kl_penalty).mean().item(),
-                "avg_gen_tokens":     float(mask.sum().item() / config.batch_size),
-            },
-            step=episode,
-        )
+            # Zero out special‑token gradients so they stay fixed -------------
+            zero_special_token_grads(model, tokenizer)
+            optimizer.step()
 
-        rollout_logger.log_rollout(
-            episode=episode,
-            prompts=prompts,
-            targets=targets,
-            thinking_contents=thinking_contents,
-            contents=contents,
-            rewards=rewards.tolist(),
-            loss=loss.item(),
-            kl_penalty_mean=kl_penalty.mean().item(),
-        )
+            # Log accumulated metrics
+            avg_loss = accumulated_loss / len(accumulated_episodes) if accumulated_episodes else 0.0
+            avg_reward = sum(accumulated_rewards) / len(accumulated_rewards) if accumulated_rewards else 0.0
+            avg_advantage = sum(accumulated_advantages) / len(accumulated_advantages) if accumulated_advantages else 0.0
+            avg_kl_penalty = sum(accumulated_kl_penalties) / len(accumulated_kl_penalties) if accumulated_kl_penalties else 0.0
+            avg_gen_tokens = float(mask.sum().item() / config.batch_size)
+
+            wandb_logger.log(
+                {
+                    "loss": avg_loss,
+                    "reward_mean": avg_reward,
+                    "advantage_mean": avg_advantage,
+                    "kl_penalty_mean": avg_kl_penalty,
+                    "kl_penalty_scaled": (config.kl_coefficient * avg_kl_penalty),
+                    "avg_gen_tokens": avg_gen_tokens,
+                    "gradient_accumulation_step": episode // gradient_accumulation_steps,
+                },
+                step=episode,
+            )
+
+            # Log rollouts for each episode in the accumulation
+            for episode_data in accumulated_episodes:
+                rollout_logger.log_rollout(
+                    episode=episode_data['episode'],
+                    prompts=episode_data['prompts'],
+                    targets=episode_data['targets'],
+                    thinking_contents=episode_data['thinking_contents'],
+                    contents=episode_data['contents'],
+                    rewards=episode_data['rewards'],
+                    loss=episode_data['loss'],
+                    kl_penalty_mean=episode_data['kl_penalty_mean'],
+                )
+
+            # Reset accumulation variables
+            accumulated_loss = 0.0
+            accumulated_rewards = []
+            accumulated_advantages = []
+            accumulated_kl_penalties = []
+            accumulated_episodes = []
 
     wandb_logger.finish()
