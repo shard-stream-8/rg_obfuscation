@@ -14,6 +14,11 @@ class BatchThinkingTokenBudgetProcessor(LogitsProcessor):
         self.stopped_thinking = [False] * batch_size
         self.neg_inf = -1e10
 
+    def reset(self):
+        """Reset the processor state for a new episode."""
+        self.tokens_generated = [0] * self.batch_size
+        self.stopped_thinking = [False] * self.batch_size
+
     def _set_token_score(self, scores, token_ids, value, batch_idx):
         for tid in token_ids:
             if tid < scores.shape[1]:

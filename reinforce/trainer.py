@@ -5,6 +5,7 @@ import yaml
 from models.qwen3 import load_qwen3_model, prepare_thinking_input
 from reinforce.logit_processor import BatchThinkingTokenBudgetProcessor
 from tasks.task_loader import load_task
+from tasks.prompt_templates import create_custom_prompt
 from reinforce.utils import zero_special_token_grads
 from wandb_logger import WandbLogger
 from reinforce.rollout_logger import RolloutLogger
@@ -65,9 +66,24 @@ def train(config_path: str = "config.yaml") -> None:
     for episode in range(config.num_episodes):
         model.eval()
 
+        # Reset logit processor state for new episode
+        logit_processor.reset()
+
         batch_indices = [random.randrange(len(task)) for _ in range(config.batch_size)]
         batch        = [task[idx] for idx in batch_indices]
-        prompts      = [b["question"] for b in batch]
+        
+        # Apply custom prompt template if specified
+        if hasattr(config, 'prompt_template') and config.prompt_template:
+            prompts = [
+                create_custom_prompt(
+                    original_question=b["question"],
+                    task_name=config.task_name,
+                    template=config.prompt_template
+                ) for b in batch
+            ]
+        else:
+            prompts = [b["question"] for b in batch]
+            
         targets      = [b["answer"]   for b in batch]
 
         prompt_inputs = [prepare_thinking_input(tokenizer, p, enable_thinking=True) for p in prompts]
@@ -87,15 +103,48 @@ def train(config_path: str = "config.yaml") -> None:
 
         thinking_contents, contents = [], []
         end_think_token_id = tokenizer.encode("</think>", add_special_tokens=False)[0]
+        start_think_token_id = tokenizer.encode("<think>", add_special_tokens=False)[0]
+        
         for seq, p_len in zip(generated_ids, prompt_lens):
             response_ids = seq[p_len:].tolist()
+            
+            # Find <think> and </think> tag positions
             try:
-                # last occurrence of </think>
-                idx = len(response_ids) - response_ids[::-1].index(end_think_token_id)
+                thinking_start = response_ids.index(start_think_token_id)
             except ValueError:
-                idx = 0
-            thinking = tokenizer.decode(response_ids[:idx],  skip_special_tokens=True).strip("\n")
-            answer   = tokenizer.decode(response_ids[idx:], skip_special_tokens=True).strip("\n")
+                thinking_start = None
+            try:
+                thinking_end = len(response_ids) - response_ids[::-1].index(end_think_token_id)
+            except ValueError:
+                thinking_end = None
+            
+            if thinking_start is not None:
+                if thinking_end is not None and thinking_end > thinking_start:
+                    # Both tags present and in order
+                    thinking_ids = response_ids[thinking_start + 1:thinking_end - 1]  # exclude <think> and </think>
+                    content_ids = response_ids[thinking_end:]
+                    thinking = tokenizer.decode(thinking_ids, skip_special_tokens=True).strip()
+                    answer = tokenizer.decode(content_ids, skip_special_tokens=True).strip()
+                else:
+                    # Only <think> present, no </think>
+                    thinking_ids = response_ids[thinking_start + 1:]
+                    thinking = tokenizer.decode(thinking_ids, skip_special_tokens=True).strip()
+                    answer = ""
+            else:
+                # No <think> tag, treat all as answer
+                thinking = ""
+                answer = tokenizer.decode(response_ids, skip_special_tokens=True).strip()
+            
+            # Clean up any prompt template fragments that might have leaked through
+            prompt_fragments = [
+                "Write in as much detail as is useful inside think tags, but give only a brief explanation in your final output.",
+                "assistant",
+                "user:",
+                "assistant:"
+            ]
+            for fragment in prompt_fragments:
+                thinking = thinking.replace(fragment, "").strip()
+                answer = answer.replace(fragment, "").strip()
             thinking_contents.append(thinking)
             contents.append(answer)
 
