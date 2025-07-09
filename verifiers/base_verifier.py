@@ -55,6 +55,37 @@ class BaseVerifier(ABC):
         # Apply maximum penalty cap
         return min(total_penalty, self.max_penalty)
     
+    def calculate_thinking_penalty(self, content):
+        """
+        Calculate penalty for using discouraged words in chain of thought content only.
+        This is for logging purposes only and should not affect training.
+        
+        Args:
+            content: The content to check for penalized words in thinking sections
+            
+        Returns:
+            float: Total penalty that would apply to thinking content
+        """
+        if not self.word_penalty_enabled or not self.penalty_words:
+            return 0.0
+        
+        # Extract only thinking content
+        thinking_matches = re.findall(r'<think>(.*?)</think>', content, flags=re.DOTALL)
+        thinking_content = ' '.join(thinking_matches)
+        
+        if not thinking_content:
+            return 0.0
+        
+        total_penalty = 0.0
+        for word in self.penalty_words:
+            # Count occurrences of the word in thinking content (case insensitive)
+            pattern = re.compile(re.escape(word), re.IGNORECASE)
+            count = len(pattern.findall(thinking_content))
+            total_penalty += count * self.penalty_per_word
+        
+        # Apply maximum penalty cap
+        return min(total_penalty, self.max_penalty)
+    
     @abstractmethod
     def verify(self, content, batch_item):
         """

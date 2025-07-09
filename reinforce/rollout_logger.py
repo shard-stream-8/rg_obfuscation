@@ -19,7 +19,8 @@ class RolloutLogger:
         
     def log_rollout(self, episode: int, prompts: List[str], targets: List[str], 
                    thinking_contents: List[str], contents: List[str], 
-                   rewards: List[float], loss: float, kl_penalty_mean: float):
+                   rewards: List[float], loss: float, kl_penalty_mean: float,
+                   thinking_penalties: List[float] = None):
         """Log a single rollout to JSON file."""
         
         # Helper function to convert tensors to serializable types
@@ -59,10 +60,13 @@ class RolloutLogger:
             }
         }
         
+        # Add thinking penalties if provided
+        if thinking_penalties is not None:
+            rollout_data["rollout"]["thinking_penalties"] = thinking_penalties
+            rollout_data["rollout"]["metrics"]["thinking_penalty_mean"] = sum(thinking_penalties) / len(thinking_penalties) if thinking_penalties else 0.0
+        
         filename = f"rollout_episode_{episode:06d}_{self.run_id}.json"
         filepath = os.path.join(self.rollouts_dir, filename)
-        
-
         
         with open(filepath, 'w') as f:
             json.dump(rollout_data, f, indent=2)

@@ -98,6 +98,7 @@ def train(config_path: str = "config.yaml") -> None:
     accumulated_rewards = []
     accumulated_base_rewards = []
     accumulated_penalties = []
+    accumulated_thinking_penalties = []
     accumulated_advantages = []
     accumulated_kl_penalties = []
     accumulated_episodes = []
@@ -197,6 +198,7 @@ def train(config_path: str = "config.yaml") -> None:
         # Calculate rewards and penalties separately
         base_rewards = []
         penalties = []
+        thinking_penalties = []
         penalized_rewards = []
         
         for b, c in zip(batch, contents):
@@ -206,20 +208,24 @@ def train(config_path: str = "config.yaml") -> None:
                 verifier = task.score_answer
                 base_reward = verifier.verify(c, b)
                 penalty = verifier.calculate_word_penalty(c)
+                thinking_penalty = verifier.calculate_thinking_penalty(c)  # For logging only
                 penalized_reward = base_reward - penalty
             else:
                 # Fallback to the original method
                 base_reward = task.score_answer(c, b)
                 penalty = 0.0
+                thinking_penalty = 0.0
                 penalized_reward = base_reward
             
             base_rewards.append(base_reward)
             penalties.append(penalty)
+            thinking_penalties.append(thinking_penalty)
             penalized_rewards.append(penalized_reward)
         
         # Convert to tensors
         base_rewards = torch.tensor(base_rewards, dtype=torch.float32, device=device)
         penalties = torch.tensor(penalties, dtype=torch.float32, device=device)
+        thinking_penalties = torch.tensor(thinking_penalties, dtype=torch.float32, device=device)
         rewards = torch.tensor(penalized_rewards, dtype=torch.float32, device=device)  # Use penalized rewards for training
 
         model.train()
@@ -282,6 +288,7 @@ def train(config_path: str = "config.yaml") -> None:
         accumulated_rewards.extend(rewards.tolist())
         accumulated_base_rewards.extend(base_rewards.tolist())
         accumulated_penalties.extend(penalties.tolist())
+        accumulated_thinking_penalties.extend(thinking_penalties.tolist())
         accumulated_advantages.extend(advantage.tolist())
         accumulated_kl_penalties.extend(kl_penalty.tolist())
         accumulated_episodes.append({
@@ -293,6 +300,7 @@ def train(config_path: str = "config.yaml") -> None:
             'rewards': rewards.tolist(),
             'base_rewards': base_rewards.tolist(),
             'penalties': penalties.tolist(),
+            'thinking_penalties': thinking_penalties.tolist(),
             'loss': loss.item() * gradient_accumulation_steps,  # Scale back for logging
             'kl_penalty_mean': kl_penalty.mean().item(),
         })
@@ -311,6 +319,7 @@ def train(config_path: str = "config.yaml") -> None:
             avg_reward = sum(accumulated_rewards) / len(accumulated_rewards) if accumulated_rewards else 0.0
             avg_base_reward = sum(accumulated_base_rewards) / len(accumulated_base_rewards) if accumulated_base_rewards else 0.0
             avg_penalty = sum(accumulated_penalties) / len(accumulated_penalties) if accumulated_penalties else 0.0
+            avg_thinking_penalty = sum(accumulated_thinking_penalties) / len(accumulated_thinking_penalties) if accumulated_thinking_penalties else 0.0
             avg_advantage = sum(accumulated_advantages) / len(accumulated_advantages) if accumulated_advantages else 0.0
             avg_kl_penalty = sum(accumulated_kl_penalties) / len(accumulated_kl_penalties) if accumulated_kl_penalties else 0.0
             avg_gen_tokens = float(mask.sum().item() / config.batch_size)
@@ -321,6 +330,7 @@ def train(config_path: str = "config.yaml") -> None:
                     "reward_mean": avg_base_reward,  # Base task reward (before penalty)
                     "penalized_reward": avg_reward,  # Final reward (after penalty)
                     "penalty": avg_penalty,  # Just the penalty amount
+                    "thinking_penalty_mean": avg_thinking_penalty,
                     "advantage_mean": avg_advantage,
                     "kl_penalty_mean": avg_kl_penalty,
                     "kl_penalty_scaled": (config.kl_coefficient * avg_kl_penalty),
@@ -340,6 +350,7 @@ def train(config_path: str = "config.yaml") -> None:
                     contents=episode_data['contents'],
                     rewards=episode_data['rewards'],
                     loss=episode_data['loss'],
+                    thinking_penalties=episode_data['thinking_penalties'],
                     kl_penalty_mean=episode_data['kl_penalty_mean'],
                 )
 
@@ -348,6 +359,7 @@ def train(config_path: str = "config.yaml") -> None:
             accumulated_rewards = []
             accumulated_base_rewards = []
             accumulated_penalties = []
+            accumulated_thinking_penalties = []
             accumulated_advantages = []
             accumulated_kl_penalties = []
             accumulated_episodes = []
