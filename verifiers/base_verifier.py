@@ -22,12 +22,24 @@ class BaseVerifier(ABC):
         self.penalty_per_word = 0.0
         self.max_penalty = 0.0
         
-        if config and hasattr(config, 'word_penalty'):
-            word_penalty_config = config.word_penalty
-            self.word_penalty_enabled = word_penalty_config.get('enabled', False)
-            self.penalty_words = word_penalty_config.get('words', [])
-            self.penalty_per_word = word_penalty_config.get('penalty_per_word', 0.0)
-            self.max_penalty = word_penalty_config.get('max_penalty', 0.0)
+        if config:
+            word_penalty_config = None
+            if hasattr(config, 'word_penalty'):
+                word_penalty_config = config.word_penalty
+            elif isinstance(config, dict) and 'word_penalty' in config:
+                word_penalty_config = config['word_penalty']
+            if word_penalty_config:
+                # Support both dict and object for word_penalty_config
+                if isinstance(word_penalty_config, dict):
+                    self.word_penalty_enabled = word_penalty_config.get('enabled', False)
+                    self.penalty_words = word_penalty_config.get('words', [])
+                    self.penalty_per_word = word_penalty_config.get('penalty_per_word', 0.0)
+                    self.max_penalty = word_penalty_config.get('max_penalty', 0.0)
+                else:
+                    self.word_penalty_enabled = getattr(word_penalty_config, 'enabled', False)
+                    self.penalty_words = getattr(word_penalty_config, 'words', [])
+                    self.penalty_per_word = getattr(word_penalty_config, 'penalty_per_word', 0.0)
+                    self.max_penalty = getattr(word_penalty_config, 'max_penalty', 0.0)
     
     def calculate_word_penalty(self, content):
         """

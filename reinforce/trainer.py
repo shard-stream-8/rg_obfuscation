@@ -201,14 +201,66 @@ def train(config_path: str = "config.yaml") -> None:
         thinking_penalties = []
         penalized_rewards = []
         
-        for b, c in zip(batch, contents):
+        for b, c, thinking_c in zip(batch, contents, thinking_contents):
             # Get the verifier to calculate base reward and penalty separately
             if hasattr(task, 'score_answer') and hasattr(task.score_answer, 'calculate_word_penalty'):
                 # If the verifier has word penalty functionality, use it
                 verifier = task.score_answer
                 base_reward = verifier.verify(c, b)
                 penalty = verifier.calculate_word_penalty(c)
-                thinking_penalty = verifier.calculate_thinking_penalty(c)  # For logging only
+                
+                # Calculate thinking penalty using the already-extracted thinking content
+                thinking_penalty = 0.0
+                if hasattr(verifier, 'calculate_thinking_penalty_on_content'):
+                    # Use the method designed for already-extracted thinking content
+                    thinking_penalty = verifier.calculate_thinking_penalty_on_content(thinking_c)
+                elif hasattr(verifier, 'calculate_thinking_penalty'):
+                    # If verifier has the method, use it with the full content
+                    thinking_penalty = verifier.calculate_thinking_penalty(c)
+                else:
+                    # Fallback: use the already-extracted thinking content directly
+                    if thinking_c:
+                        # Check if verifier has word penalty configuration
+                        if (hasattr(verifier, 'word_penalty_enabled') and verifier.word_penalty_enabled and 
+                            hasattr(verifier, 'penalty_words') and verifier.penalty_words):
+                            for word in verifier.penalty_words:
+                                pattern = re.compile(re.escape(word), re.IGNORECASE)
+                                count = len(pattern.findall(thinking_c))
+                                thinking_penalty += count * verifier.penalty_per_word
+                            thinking_penalty = min(thinking_penalty, verifier.max_penalty)
+                        # If verifier doesn't have penalty config, check if we can get it from config
+                        elif hasattr(verifier, 'config') and verifier.config:
+                            config = verifier.config
+                            word_penalty_config = None
+                            if hasattr(config, 'word_penalty'):
+                                word_penalty_config = config.word_penalty
+                            elif isinstance(config, dict) and 'word_penalty' in config:
+                                word_penalty_config = config['word_penalty']
+                            
+                            if word_penalty_config:
+                                enabled = False
+                                words = []
+                                penalty_per_word = 0.0
+                                max_penalty = 0.0
+                                
+                                if isinstance(word_penalty_config, dict):
+                                    enabled = word_penalty_config.get('enabled', False)
+                                    words = word_penalty_config.get('words', [])
+                                    penalty_per_word = word_penalty_config.get('penalty_per_word', 0.0)
+                                    max_penalty = word_penalty_config.get('max_penalty', 0.0)
+                                else:
+                                    enabled = getattr(word_penalty_config, 'enabled', False)
+                                    words = getattr(word_penalty_config, 'words', [])
+                                    penalty_per_word = getattr(word_penalty_config, 'penalty_per_word', 0.0)
+                                    max_penalty = getattr(word_penalty_config, 'max_penalty', 0.0)
+                                
+                                if enabled and words:
+                                    for word in words:
+                                        pattern = re.compile(re.escape(word), re.IGNORECASE)
+                                        count = len(pattern.findall(thinking_c))
+                                        thinking_penalty += count * penalty_per_word
+                                    thinking_penalty = min(thinking_penalty, max_penalty)
+                
                 penalized_reward = base_reward - penalty
             else:
                 # Fallback to the original method
