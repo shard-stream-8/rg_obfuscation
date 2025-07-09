@@ -76,5 +76,5 @@ class BaseVerifier(ABC):
         """
         base_score = self.verify(content, batch_item)
         word_penalty = self.calculate_word_penalty(content)
-        final_score = max(0.0, base_score - word_penalty)
+        final_score = base_score - word_penalty
         return final_score 

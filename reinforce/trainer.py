@@ -206,7 +206,7 @@ def train(config_path: str = "config.yaml") -> None:
                 verifier = task.score_answer
                 base_reward = verifier.verify(c, b)
                 penalty = verifier.calculate_word_penalty(c)
-                penalized_reward = max(0.0, base_reward - penalty)
+                penalized_reward = base_reward - penalty
             else:
                 # Fallback to the original method
                 base_reward = task.score_answer(c, b)
