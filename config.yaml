@@ -21,7 +21,7 @@ device: "cuda"
 # penalty configuration
 word_penalty:
   enabled: true
-  words: ["the"]
+  words: ["married"]
   penalty_per_word: 0.2
   max_penalty: 1.5
 
