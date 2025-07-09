@@ -2,7 +2,7 @@
 model_name: "Qwen/Qwen3-4B"
 
 # reasoning gym
-task_name: "acre"
+task_name: "family_relationships"
 custom_verifier_path: "registry" # "registry" automatically finds the custom verifier in /verifiers for the selected task
 custom_prompt_path: "registry" # "registry" automatically finds the custom prompt in /prompts for the selected task
 
@@ -22,7 +22,7 @@ device: "cuda"
 word_penalty:
   enabled: true
   words: ["married"]
-  penalty_per_word: 0.2
+  penalty_per_word: 0.
   max_penalty: 1.5
 
 # wandb
