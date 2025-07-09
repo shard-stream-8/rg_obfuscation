@@ -20,7 +20,11 @@ class RolloutLogger:
     def log_rollout(self, episode: int, prompts: List[str], targets: List[str], 
                    thinking_contents: List[str], contents: List[str], 
                    rewards: List[float], loss: float, kl_penalty_mean: float,
-                   thinking_penalties: List[float] = None):
+                   thinking_penalties: List[float] = None,
+                   output_word_penalties: List[Dict[str, float]] = None,
+                   thinking_word_penalties: List[Dict[str, float]] = None,
+                   output_word_counts: List[Dict[str, int]] = None,
+                   thinking_word_counts: List[Dict[str, int]] = None):
         """Log a single rollout to JSON file."""
         
         # Helper function to convert tensors to serializable types
@@ -64,6 +68,18 @@ class RolloutLogger:
         if thinking_penalties is not None:
             rollout_data["rollout"]["thinking_penalties"] = thinking_penalties
             rollout_data["rollout"]["metrics"]["thinking_penalty_mean"] = sum(thinking_penalties) / len(thinking_penalties) if thinking_penalties else 0.0
+        
+        # Add individual word penalties if provided
+        if output_word_penalties is not None:
+            rollout_data["rollout"]["output_word_penalties"] = output_word_penalties
+        if thinking_word_penalties is not None:
+            rollout_data["rollout"]["thinking_word_penalties"] = thinking_word_penalties
+        
+        # Add individual word counts if provided
+        if output_word_counts is not None:
+            rollout_data["rollout"]["output_word_counts"] = output_word_counts
+        if thinking_word_counts is not None:
+            rollout_data["rollout"]["thinking_word_counts"] = thinking_word_counts
         
         filename = f"rollout_episode_{episode:06d}_{self.run_id}.json"
         filepath = os.path.join(self.rollouts_dir, filename)

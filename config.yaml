@@ -2,7 +2,7 @@
 model_name: "Qwen/Qwen3-4B"
 
 # reasoning gym
-task_name: "family_relationships"
+task_name: "acre"
 custom_verifier_path: "registry" # "registry" automatically finds the custom verifier in /verifiers for the selected task
 custom_prompt_path: "registry" # "registry" automatically finds the custom prompt in /prompts for the selected task
 
@@ -20,10 +20,10 @@ device: "cuda"
 
 # penalty configuration
 word_penalty:
-  enabled: true
-  words: ["the"]
-  penalty_per_word: 0.2
-  max_penalty: 1.5
+  enabled: false
+  words: ["detector", "light", "blicket"]
+  penalty_per_word: 0.25
+  max_penalty: 2.0
 
 # wandb
 wandb_project: "qwen3-reinforce-reasongym"

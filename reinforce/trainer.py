@@ -200,30 +200,61 @@ def train(config_path: str = "config.yaml") -> None:
         penalties = []
         thinking_penalties = []
         penalized_rewards = []
+        # For logging individual word penalties
+        output_word_penalties = []
+        thinking_word_penalties = []
+        # For logging raw word counts
+        output_word_counts = []
+        thinking_word_counts = []
         
         for b, c, thinking_c in zip(batch, contents, thinking_contents):
             # Get the verifier to calculate base reward and penalty separately
             if hasattr(task, 'score_answer') and hasattr(task.score_answer, 'calculate_word_penalty'):
-                # If the verifier has word penalty functionality, use it
                 verifier = task.score_answer
                 base_reward = verifier.verify(c, b)
                 penalty = verifier.calculate_word_penalty(c)
                 
-                # Calculate thinking penalty using BaseVerifier implementation only
-                full_generated_output = f"<think>{thinking_c}</think>{c}"
-                thinking_penalty = verifier.calculate_thinking_penalty(full_generated_output) if hasattr(verifier, 'calculate_thinking_penalty') else 0.0
+                # Calculate penalties for logging (even when disabled)
+                output_penalty_for_logging = 0.0
+                thinking_penalty_for_logging = 0.0
+                output_word_penalties_dict = {}
+                thinking_word_penalties_dict = {}
+                output_word_counts_dict = {}
+                thinking_word_counts_dict = {}
+                
+                if hasattr(verifier, 'calculate_word_penalty_for_logging'):
+                    output_penalty_for_logging = verifier.calculate_word_penalty_for_logging(c)
+                if hasattr(verifier, 'calculate_thinking_penalty_for_logging'):
+                    thinking_penalty_for_logging = verifier.calculate_thinking_penalty_for_logging(thinking_c)
+                if hasattr(verifier, 'calculate_individual_word_penalties'):
+                    output_word_penalties_dict = verifier.calculate_individual_word_penalties(c)
+                if hasattr(verifier, 'calculate_individual_thinking_word_penalties'):
+                    thinking_word_penalties_dict = verifier.calculate_individual_thinking_word_penalties(thinking_c)
+                if hasattr(verifier, 'calculate_raw_word_counts'):
+                    output_word_counts_dict = verifier.calculate_raw_word_counts(c)
+                if hasattr(verifier, 'calculate_raw_thinking_word_counts'):
+                    thinking_word_counts_dict = verifier.calculate_raw_thinking_word_counts(thinking_c)
+                
                 penalized_reward = base_reward - penalty
             else:
-                # Fallback to the original method
                 base_reward = task.score_answer(c, b)
                 penalty = 0.0
-                thinking_penalty = 0.0
+                thinking_penalty_for_logging = 0.0
+                output_penalty_for_logging = 0.0
+                output_word_penalties_dict = {}
+                thinking_word_penalties_dict = {}
+                output_word_counts_dict = {}
+                thinking_word_counts_dict = {}
                 penalized_reward = base_reward
             
             base_rewards.append(base_reward)
             penalties.append(penalty)
-            thinking_penalties.append(thinking_penalty)
+            thinking_penalties.append(thinking_penalty_for_logging)
             penalized_rewards.append(penalized_reward)
+            output_word_penalties.append(output_word_penalties_dict)
+            thinking_word_penalties.append(thinking_word_penalties_dict)
+            output_word_counts.append(output_word_counts_dict)
+            thinking_word_counts.append(thinking_word_counts_dict)
         
         # Convert to tensors
         base_rewards = torch.tensor(base_rewards, dtype=torch.float32, device=device)
@@ -304,6 +335,10 @@ def train(config_path: str = "config.yaml") -> None:
             'base_rewards': base_rewards.tolist(),
             'penalties': penalties.tolist(),
             'thinking_penalties': thinking_penalties.tolist(),
+            'output_word_penalties': output_word_penalties,
+            'thinking_word_penalties': thinking_word_penalties,
+            'output_word_counts': output_word_counts,
+            'thinking_word_counts': thinking_word_counts,
             'loss': loss.item() * gradient_accumulation_steps,  # Scale back for logging
             'kl_penalty_mean': kl_penalty.mean().item(),
         })
@@ -326,7 +361,52 @@ def train(config_path: str = "config.yaml") -> None:
             avg_advantage = sum(accumulated_advantages) / len(accumulated_advantages) if accumulated_advantages else 0.0
             avg_kl_penalty = sum(accumulated_kl_penalties) / len(accumulated_kl_penalties) if accumulated_kl_penalties else 0.0
             avg_gen_tokens = float(mask.sum().item() / config.batch_size)
-
+            
+            # Calculate individual word penalty averages for logging
+            all_output_word_penalties = {}
+            all_thinking_word_penalties = {}
+            all_output_word_counts = {}
+            all_thinking_word_counts = {}
+            for ep in accumulated_episodes:
+                for word_penalties in ep['output_word_penalties']:
+                    for word, penalty in word_penalties.items():
+                        if word not in all_output_word_penalties:
+                            all_output_word_penalties[word] = []
+                        all_output_word_penalties[word].append(penalty)
+                for word_penalties in ep['thinking_word_penalties']:
+                    for word, penalty in word_penalties.items():
+                        if word not in all_thinking_word_penalties:
+                            all_thinking_word_penalties[word] = []
+                        all_thinking_word_penalties[word].append(penalty)
+                for word_counts in ep['output_word_counts']:
+                    for word, count in word_counts.items():
+                        if word not in all_output_word_counts:
+                            all_output_word_counts[word] = []
+                        all_output_word_counts[word].append(count)
+                for word_counts in ep['thinking_word_counts']:
+                    for word, count in word_counts.items():
+                        if word not in all_thinking_word_counts:
+                            all_thinking_word_counts[word] = []
+                        all_thinking_word_counts[word].append(count)
+            
+            # Calculate averages for each word
+            avg_output_word_penalties = {}
+            avg_thinking_word_penalties = {}
+            avg_output_word_counts = {}
+            avg_thinking_word_counts = {}
+            for word, penalties in all_output_word_penalties.items():
+                avg_output_word_penalties[f"output_penalty_{word}"] = sum(penalties) / len(penalties)
+            for word, penalties in all_thinking_word_penalties.items():
+                avg_thinking_word_penalties[f"thinking_penalty_{word}"] = sum(penalties) / len(penalties)
+            for word, counts in all_output_word_counts.items():
+                avg_output_word_counts[f"output_count_{word}"] = sum(counts) / len(counts)
+            for word, counts in all_thinking_word_counts.items():
+                avg_thinking_word_counts[f"thinking_count_{word}"] = sum(counts) / len(counts)
+            
+            # Calculate total counts across all words
+            total_output_words = sum(sum(counts) for counts in all_output_word_counts.values())
+            total_thinking_words = sum(sum(counts) for counts in all_thinking_word_counts.values())
+            
             wandb_logger.log(
                 {
                     "loss": avg_loss,
@@ -339,6 +419,12 @@ def train(config_path: str = "config.yaml") -> None:
                     "kl_penalty_scaled": (config.kl_coefficient * avg_kl_penalty),
                     "avg_gen_tokens": avg_gen_tokens,
                     "gradient_accumulation_step": episode // gradient_accumulation_steps,
+                    "total_output_penalized_words": total_output_words,
+                    "total_thinking_penalized_words": total_thinking_words,
+                    **avg_output_word_penalties,
+                    **avg_thinking_word_penalties,
+                    **avg_output_word_counts,
+                    **avg_thinking_word_counts,
                 },
                 step=episode,
             )
@@ -354,6 +440,10 @@ def train(config_path: str = "config.yaml") -> None:
                     rewards=episode_data['rewards'],
                     loss=episode_data['loss'],
                     thinking_penalties=episode_data['thinking_penalties'],
+                    output_word_penalties=episode_data['output_word_penalties'],
+                    thinking_word_penalties=episode_data['thinking_word_penalties'],
+                    output_word_counts=episode_data['output_word_counts'],
+                    thinking_word_counts=episode_data['thinking_word_counts'],
                     kl_penalty_mean=episode_data['kl_penalty_mean'],
                 )
 
