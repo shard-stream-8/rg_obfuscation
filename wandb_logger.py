@@ -1,63 +1,43 @@
 import wandb
-import os
 import re
-from pathlib import Path
 
-def get_next_run_number(task_name, project_name):
+def get_next_run_number_wandb_api(task_name, project, entity=None):
     """
-    Find the next available run number for a given task.
-    
+    Use the wandb public API to find the next available run number for a given task.
     Args:
         task_name: Name of the task (e.g., 'acre')
-        project_name: Name of the wandb project
-        
+        project: Name of the wandb project
+        entity: (Optional) wandb entity (user or team)
     Returns:
         int: Next available run number
     """
-    # Get the wandb directory path
-    wandb_dir = Path("wandb")
-    if not wandb_dir.exists():
-        return 1
-    
-    # Pattern to match existing runs for this task
-    pattern = re.compile(rf"^{task_name}-(\d+)$")
-    
-    # Find all existing run numbers for this task
-    existing_numbers = []
-    for item in wandb_dir.iterdir():
-        if item.is_dir() and item.name.startswith("run-"):
-            # Extract the run name from the directory
-            # wandb directories are named like: run-20250708_214858-t9or7go1
-            # We need to check the actual run name inside the directory
-            run_info_file = item / "wandb-metadata.json"
-            if run_info_file.exists():
-                try:
-                    import json
-                    with open(run_info_file, 'r') as f:
-                        metadata = json.load(f)
-                    run_name = metadata.get('name', '')
-                    match = pattern.match(run_name)
-                    if match:
-                        existing_numbers.append(int(match.group(1)))
-                except (json.JSONDecodeError, KeyError):
-                    continue
-    
-    # Return the next available number
-    if not existing_numbers:
-        return 1
-    return max(existing_numbers) + 1
+    api = wandb.Api()
+    runs = api.runs(f"{entity}/{project}" if entity else project)
+    max_num = 0
+    prefix = f"{task_name}-"
+    for run in runs:
+        name = run.name or ""
+        if name.startswith(prefix):
+            try:
+                num = int(name[len(prefix):])
+                if num > max_num:
+                    max_num = num
+            except ValueError:
+                continue
+    return max_num + 1
 
 class WandbLogger:
     def __init__(self, config):
-        # Generate run name in format [task]-[number]
+        # Generate run name in format [task]-[number] using wandb API
         task_name = config.task_name
         project_name = config.wandb_project
-        run_number = get_next_run_number(task_name, project_name)
+        entity = getattr(config, 'wandb_entity', None)
+        run_number = get_next_run_number_wandb_api(task_name, project_name, entity)
         run_name = f"{task_name}-{run_number}"
         
         self.run = wandb.init(
-            project=config.wandb_project,
-            entity=getattr(config, 'wandb_entity', None),
+            project=project_name,
+            entity=entity,
             name=run_name,
             config={k: v for k, v in config.items()},
             reinit=True

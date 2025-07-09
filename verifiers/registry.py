@@ -50,7 +50,7 @@ class VerifierRegistry:
             file_path: Path to the Python file containing the verifier
             
         Returns:
-            Verifier instance/callable or None if loading fails
+            Verifier class or callable or None if loading fails
         """
         try:
             # Load the module from file
@@ -58,21 +58,21 @@ class VerifierRegistry:
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
             
-            # Look for a verifier function or class
+            # First, look for any class that inherits from BaseVerifier (prioritize classes)
+            for attr_name in dir(module):
+                attr = getattr(module, attr_name)
+                if (isinstance(attr, type) and 
+                    issubclass(attr, BaseVerifier) and 
+                    attr != BaseVerifier):
+                    return attr  # Return the class, not an instance
+            
+            # Then look for a verifier function or class
             if hasattr(module, 'verifier'):
                 return module.verifier
             elif hasattr(module, 'Verifier'):
-                return module.Verifier()
-            else:
-                # Look for any class that inherits from BaseVerifier
-                for attr_name in dir(module):
-                    attr = getattr(module, attr_name)
-                    if (isinstance(attr, type) and 
-                        issubclass(attr, BaseVerifier) and 
-                        attr != BaseVerifier):
-                        return attr()
-                
-                return None
+                return module.Verifier  # Return the class, not an instance
+            
+            return None
                 
         except Exception as e:
             print(f"Error loading verifier from {file_path}: {e}")

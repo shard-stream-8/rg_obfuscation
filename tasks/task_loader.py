@@ -4,13 +4,14 @@ import sys
 import os
 from reasoning_gym.factory import create_dataset
 
-def load_task(task_name, custom_verifier_path=None):
+def load_task(task_name, custom_verifier_path=None, config=None):
     """
     Load a task using reasoning_gym's automatic factory system.
     
     Args:
         task_name: Name of the task (e.g., 'leg_counting')
         custom_verifier_path: Optional path to custom verifier module or 'registry' to use registry
+        config: Optional configuration object for verifier settings (e.g., word penalties)
         
     Returns:
         Configured dataset instance
@@ -27,8 +28,12 @@ def load_task(task_name, custom_verifier_path=None):
                     from verifiers.registry import registry
                     verifier = registry.get_verifier(task_name)
                     if verifier is not None:
-                        # Replace the dataset's score_answer method with our verifier
-                        dataset.score_answer = verifier
+                        # If verifier is a class, instantiate it with config
+                        if isinstance(verifier, type):
+                            verifier_instance = verifier(config)
+                        else:
+                            verifier_instance = verifier
+                        dataset.score_answer = verifier_instance
                         print(f"Loaded custom verifier for task '{task_name}' from registry")
                     else:
                         print(f"No custom verifier found in registry for task '{task_name}'")

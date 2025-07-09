@@ -11,7 +11,11 @@ class AcreVerifier(BaseVerifier):
     Custom verifier for acre task.
     Checks if the output contains 'boxed{[answer]}' where [answer] is the correct answer.
     Ignores chain of thought (anything between <think> and </think> tags).
+    Inherits word penalty functionality from BaseVerifier.
     """
+    def __init__(self, config=None):
+        super().__init__(config)
+    
     def verify(self, content, batch_item):
         correct_answer = str(batch_item["answer"])
         # Remove thinking content (anything between <think> and </think> tags)

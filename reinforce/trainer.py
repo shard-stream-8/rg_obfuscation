@@ -43,7 +43,7 @@ def train(config_path: str = "config.yaml") -> None:
         p.requires_grad = False
 
     # RL task & logging helpers -------------------------------------------
-    task = load_task(config.task_name, config.custom_verifier_path)
+    task = load_task(config.task_name, config.custom_verifier_path, config)
     wandb_logger   = WandbLogger(config)
     rollout_logger = RolloutLogger(config)
 
@@ -96,6 +96,8 @@ def train(config_path: str = "config.yaml") -> None:
     gradient_accumulation_steps = getattr(config, 'gradient_accumulation_steps', 1)
     accumulated_loss = 0.0
     accumulated_rewards = []
+    accumulated_base_rewards = []
+    accumulated_penalties = []
     accumulated_advantages = []
     accumulated_kl_penalties = []
     accumulated_episodes = []
@@ -192,11 +194,33 @@ def train(config_path: str = "config.yaml") -> None:
             thinking_contents.append(thinking)
             contents.append(answer)
 
-        rewards = torch.tensor(
-            [task.score_answer(c, b) for b, c in zip(batch, contents)],
-            dtype=torch.float32,
-            device=device,
-        )
+        # Calculate rewards and penalties separately
+        base_rewards = []
+        penalties = []
+        penalized_rewards = []
+        
+        for b, c in zip(batch, contents):
+            # Get the verifier to calculate base reward and penalty separately
+            if hasattr(task, 'score_answer') and hasattr(task.score_answer, 'calculate_word_penalty'):
+                # If the verifier has word penalty functionality, use it
+                verifier = task.score_answer
+                base_reward = verifier.verify(c, b)
+                penalty = verifier.calculate_word_penalty(c)
+                penalized_reward = max(0.0, base_reward - penalty)
+            else:
+                # Fallback to the original method
+                base_reward = task.score_answer(c, b)
+                penalty = 0.0
+                penalized_reward = base_reward
+            
+            base_rewards.append(base_reward)
+            penalties.append(penalty)
+            penalized_rewards.append(penalized_reward)
+        
+        # Convert to tensors
+        base_rewards = torch.tensor(base_rewards, dtype=torch.float32, device=device)
+        penalties = torch.tensor(penalties, dtype=torch.float32, device=device)
+        rewards = torch.tensor(penalized_rewards, dtype=torch.float32, device=device)  # Use penalized rewards for training
 
         model.train()
         
@@ -256,6 +280,8 @@ def train(config_path: str = "config.yaml") -> None:
         # Store metrics for logging
         accumulated_loss += loss.item() * gradient_accumulation_steps  # Scale back for logging
         accumulated_rewards.extend(rewards.tolist())
+        accumulated_base_rewards.extend(base_rewards.tolist())
+        accumulated_penalties.extend(penalties.tolist())
         accumulated_advantages.extend(advantage.tolist())
         accumulated_kl_penalties.extend(kl_penalty.tolist())
         accumulated_episodes.append({
@@ -265,6 +291,8 @@ def train(config_path: str = "config.yaml") -> None:
             'thinking_contents': thinking_contents,
             'contents': contents,
             'rewards': rewards.tolist(),
+            'base_rewards': base_rewards.tolist(),
+            'penalties': penalties.tolist(),
             'loss': loss.item() * gradient_accumulation_steps,  # Scale back for logging
             'kl_penalty_mean': kl_penalty.mean().item(),
         })
@@ -281,6 +309,8 @@ def train(config_path: str = "config.yaml") -> None:
             # Log accumulated metrics
             avg_loss = accumulated_loss / len(accumulated_episodes) if accumulated_episodes else 0.0
             avg_reward = sum(accumulated_rewards) / len(accumulated_rewards) if accumulated_rewards else 0.0
+            avg_base_reward = sum(accumulated_base_rewards) / len(accumulated_base_rewards) if accumulated_base_rewards else 0.0
+            avg_penalty = sum(accumulated_penalties) / len(accumulated_penalties) if accumulated_penalties else 0.0
             avg_advantage = sum(accumulated_advantages) / len(accumulated_advantages) if accumulated_advantages else 0.0
             avg_kl_penalty = sum(accumulated_kl_penalties) / len(accumulated_kl_penalties) if accumulated_kl_penalties else 0.0
             avg_gen_tokens = float(mask.sum().item() / config.batch_size)
@@ -288,7 +318,9 @@ def train(config_path: str = "config.yaml") -> None:
             wandb_logger.log(
                 {
                     "loss": avg_loss,
-                    "reward_mean": avg_reward,
+                    "reward_mean": avg_base_reward,  # Base task reward (before penalty)
+                    "penalized_reward": avg_reward,  # Final reward (after penalty)
+                    "penalty": avg_penalty,  # Just the penalty amount
                     "advantage_mean": avg_advantage,
                     "kl_penalty_mean": avg_kl_penalty,
                     "kl_penalty_scaled": (config.kl_coefficient * avg_kl_penalty),
@@ -314,6 +346,8 @@ def train(config_path: str = "config.yaml") -> None:
             # Reset accumulation variables
             accumulated_loss = 0.0
             accumulated_rewards = []
+            accumulated_base_rewards = []
+            accumulated_penalties = []
             accumulated_advantages = []
             accumulated_kl_penalties = []
             accumulated_episodes = []

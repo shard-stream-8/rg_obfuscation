@@ -66,6 +66,8 @@ Previous experimental results:
 New test case:
 {new_test_case}
 
+Answer immediately with boxed{{on}}, boxed{{off}}, or boxed{{undetermined}} and then provide a brief explanation of your answer.
+
 What is the detector light status?"""
 
 # For backward compatibility, also provide a function-based prompt
