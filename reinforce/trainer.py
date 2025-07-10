@@ -13,6 +13,8 @@ from reinforce.rollout_logger import RolloutLogger
 class Config:
     def __init__(self, d):
         self.__dict__.update(d)
+        # Ensure optional defaults are present even if missing from YAML
+        self._ensure_defaults()
     def __getitem__(self, k):
         return getattr(self, k)
     def __iter__(self):
@@ -21,6 +23,14 @@ class Config:
         return self.__dict__.items()
     def __contains__(self, k):
         return k in self.__dict__
+    # Add default configuration for HuggingFace repo output
+    def get(self, k, default=None):
+        return getattr(self, k, default)
+
+    # Ensure hf_repo_out always exists even if missing from YAML
+    def _ensure_defaults(self):
+        if not hasattr(self, 'hf_repo_out'):
+            self.hf_repo_out = None
 
 
 def train(config_path: str = "config.yaml") -> None:
@@ -458,3 +468,24 @@ def train(config_path: str = "config.yaml") -> None:
             accumulated_episodes = []
 
     wandb_logger.finish()
+
+    # ----------------------------------------------------------------------
+    # Optionally push the trained model (or LoRA adapters) to HuggingFace Hub
+    # ----------------------------------------------------------------------
+    repo_out = getattr(config, 'hf_repo_out', None)
+    if repo_out:
+        try:
+            print(f"Pushing model to HuggingFace Hub repo '{repo_out}' ...")
+            # Move model to CPU to free GPU memory before pushing
+            model.cpu()
+            # If the model is a PEFT model (e.g. LoRA), this will upload only the adapters.
+            # Otherwise, it will upload the full model weights.
+            model.push_to_hub(repo_out)
+            # Upload the tokenizer to the same repository for completeness
+            try:
+                tokenizer.push_to_hub(repo_out)
+            except Exception as tok_err:
+                print(f"Tokenizer push failed: {tok_err}")
+            print("Successfully pushed to HuggingFace Hub.")
+        except Exception as push_err:
+            print(f"Failed to push model to HuggingFace Hub: {push_err}")

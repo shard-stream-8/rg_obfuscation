@@ -28,3 +28,5 @@ word_penalty:
 # wandb
 wandb_project: "qwen3-reinforce-reasongym"
 wandb_entity: null
+# Optional Hugging Face repo to push the trained model (or LoRA adapters)
+hf_repo_out: jacobcd52/qwen3_4b_family_relationships_married_penalty0
