@@ -11,9 +11,10 @@ except ImportError:
 class MazeVerifier(BaseVerifier):
     """Custom verifier for the maze task.
 
-    The verifier succeeds if the correct path string appears *anywhere* in the
-    model's final answer (outside <think>...</think> tags). Other non-answer
-    tokens are allowed and do not affect the score.
+    The verifier succeeds only if the correct minimal step count is found
+    *inside* a LaTeX-style `\boxed{...}` block in the model's final answer
+    (outside `<think>...</think>` tags). Any answers not wrapped in `\boxed{}`
+    are considered incorrect.
     """
 
     def verify(self, content, batch_item):
@@ -33,10 +34,16 @@ class MazeVerifier(BaseVerifier):
         # Remove anything inside <think>...</think>
         cleaned_content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
 
-        # Whole-token, case-insensitive match; allow punctuation or start/end boundaries
-        pattern = re.compile(rf'\b{re.escape(correct_answer)}\b', re.IGNORECASE)
+        # Look for LaTeX-style boxed answers: \boxed{...}
+        boxed_matches = re.findall(r'\\boxed\{([^}]*)\}', cleaned_content)
 
-        return 1.0 if pattern.search(cleaned_content) else 0.0
+        # Trim whitespace around boxed contents and compare to correct answer
+        for boxed in boxed_matches:
+            if boxed.strip() == correct_answer:
+                return 1.0
+
+        # No boxed answer matched
+        return 0.0
 
 
 # For backward compatibility, allow functional access

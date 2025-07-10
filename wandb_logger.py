@@ -1,4 +1,5 @@
 import wandb
+from wandb.errors import CommError
 import re
 
 def get_next_run_number_wandb_api(task_name, project, entity=None):
@@ -12,7 +13,13 @@ def get_next_run_number_wandb_api(task_name, project, entity=None):
         int: Next available run number
     """
     api = wandb.Api()
-    runs = api.runs(f"{entity}/{project}" if entity else project)
+    project_path = f"{entity}/{project}" if entity else project
+    try:
+        runs = api.runs(project_path)
+    except CommError:
+        # If the project doesn't exist yet, create it and return 1 as the first run number
+        api.create_project(name=project, entity=entity)
+        return 1
     max_num = 0
     prefix = f"{task_name}-"
     for run in runs:
