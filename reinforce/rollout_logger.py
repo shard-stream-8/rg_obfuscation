@@ -19,7 +19,7 @@ class RolloutLogger:
         
     def log_rollout(self, episode: int, prompts: List[str], targets: List[str], 
                    thinking_contents: List[str], contents: List[str], 
-                   rewards: List[float], loss: float, kl_penalty_mean: float,
+                   rewards: List[float], loss: float, kl_penalty_mean: float = None,
                    thinking_penalties: List[float] = None,
                    output_word_penalties: List[Dict[str, float]] = None,
                    thinking_word_penalties: List[Dict[str, float]] = None,
@@ -58,7 +58,7 @@ class RolloutLogger:
                 "metrics": {
                     "loss": loss,
                     "reward_mean": sum(rewards) / len(rewards),
-                    "kl_penalty_mean": kl_penalty_mean,
+                    "kl_penalty_mean": kl_penalty_mean if kl_penalty_mean is not None else 0.0,
                     "reward_std": (sum((r - sum(rewards)/len(rewards))**2 for r in rewards) / len(rewards))**0.5
                 }
             }

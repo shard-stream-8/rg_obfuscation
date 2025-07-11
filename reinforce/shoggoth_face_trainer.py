@@ -94,6 +94,9 @@ def train(config_path: str = "config.yaml") -> None:
     accumulated_rewards = []
     accumulated_penalties = []
     accumulated_advantages = []
+    # Newly tracked accumulators to match trainer.py logging
+    accumulated_base_rewards = []
+    accumulated_thinking_penalties = []
     accumulated_episodes = []
 
     # ------------------------------------------------------------------
@@ -186,22 +189,61 @@ def train(config_path: str = "config.yaml") -> None:
         # ------------------------------------------------------------------
         base_rewards = []
         penalties = []
+        thinking_penalties = []  # per-example thinking penalties for logging
         penalized_rewards = []
+        # Word-level penalty bookkeeping
+        output_word_penalties = []
+        thinking_word_penalties = []
+        output_word_counts = []
+        thinking_word_counts = []
 
-        for b_item, answer_str in zip(batch, contents):
+        for b_item, answer_str, think_str in zip(batch, contents, thinking_contents):
             if hasattr(task, 'score_answer') and hasattr(task.score_answer, 'calculate_word_penalty'):
                 verifier = task.score_answer
                 base_reward = verifier.verify(answer_str, b_item)
                 penalty = verifier.calculate_word_penalty(answer_str)
+
+                # Detailed logging (only if verifier implements helpers)
+                thinking_penalty_for_logging = 0.0
+                output_penalty_for_logging = 0.0
+                output_word_penalties_dict = {}
+                thinking_word_penalties_dict = {}
+                output_word_counts_dict = {}
+                thinking_word_counts_dict = {}
+
+                if hasattr(verifier, 'calculate_word_penalty_for_logging'):
+                    output_penalty_for_logging = verifier.calculate_word_penalty_for_logging(answer_str)
+                if hasattr(verifier, 'calculate_thinking_penalty_for_logging'):
+                    thinking_penalty_for_logging = verifier.calculate_thinking_penalty_for_logging(think_str)
+                if hasattr(verifier, 'calculate_individual_word_penalties'):
+                    output_word_penalties_dict = verifier.calculate_individual_word_penalties(answer_str)
+                if hasattr(verifier, 'calculate_individual_thinking_word_penalties'):
+                    thinking_word_penalties_dict = verifier.calculate_individual_thinking_word_penalties(think_str)
+                if hasattr(verifier, 'calculate_raw_word_counts'):
+                    output_word_counts_dict = verifier.calculate_raw_word_counts(answer_str)
+                if hasattr(verifier, 'calculate_raw_thinking_word_counts'):
+                    thinking_word_counts_dict = verifier.calculate_raw_thinking_word_counts(think_str)
+
                 penalized_reward = base_reward - penalty
             else:
                 base_reward = task.score_answer(answer_str, b_item)
                 penalty = 0.0
+                thinking_penalty_for_logging = 0.0
+                output_penalty_for_logging = 0.0
+                output_word_penalties_dict = {}
+                thinking_word_penalties_dict = {}
+                output_word_counts_dict = {}
+                thinking_word_counts_dict = {}
                 penalized_reward = base_reward
 
             base_rewards.append(base_reward)
             penalties.append(penalty)
+            thinking_penalties.append(thinking_penalty_for_logging)
             penalized_rewards.append(penalized_reward)
+            output_word_penalties.append(output_word_penalties_dict)
+            thinking_word_penalties.append(thinking_word_penalties_dict)
+            output_word_counts.append(output_word_counts_dict)
+            thinking_word_counts.append(thinking_word_counts_dict)
 
         rewards = torch.tensor(penalized_rewards, dtype=torch.float32, device=device)
 
@@ -239,6 +281,8 @@ def train(config_path: str = "config.yaml") -> None:
         accumulated_rewards.extend(rewards.tolist())
         accumulated_penalties.extend(penalties)
         accumulated_advantages.extend(advantage.tolist())
+        accumulated_base_rewards.extend(base_rewards)
+        accumulated_thinking_penalties.extend(thinking_penalties)
         accumulated_episodes.append({
             'episode': episode,
             'prompts': prompts,
@@ -246,7 +290,13 @@ def train(config_path: str = "config.yaml") -> None:
             'thinking_contents': thinking_contents,
             'contents': contents,
             'rewards': rewards.tolist(),
+            'base_rewards': base_rewards,
             'penalties': penalties,
+            'thinking_penalties': thinking_penalties,
+            'output_word_penalties': output_word_penalties,
+            'thinking_word_penalties': thinking_word_penalties,
+            'output_word_counts': output_word_counts,
+            'thinking_word_counts': thinking_word_counts,
             'loss': loss.item() * gradient_accumulation_steps,
         })
 
@@ -265,14 +315,58 @@ def train(config_path: str = "config.yaml") -> None:
             avg_loss = accumulated_loss / len(accumulated_episodes)
             avg_reward = sum(accumulated_rewards) / len(accumulated_rewards)
             avg_penalty = sum(accumulated_penalties) / len(accumulated_penalties)
+            avg_base_reward = sum(accumulated_base_rewards) / len(accumulated_base_rewards) if accumulated_base_rewards else 0.0
+            avg_thinking_penalty = sum(accumulated_thinking_penalties) / len(accumulated_thinking_penalties) if accumulated_thinking_penalties else 0.0
             avg_advantage = sum(accumulated_advantages) / len(accumulated_advantages)
+
+            # Average generated tokens (think + face masks)
+            combined_mask = (think_mask | face_mask)
+            avg_gen_tokens = float(combined_mask.sum().item() / config.batch_size)
+
+            # ------------------------------------------------------------------
+            # Aggregate word-level penalties/counts across accumulation --------
+            # ------------------------------------------------------------------
+            all_output_word_penalties = {}
+            all_thinking_word_penalties = {}
+            all_output_word_counts = {}
+            all_thinking_word_counts = {}
+            for ep in accumulated_episodes:
+                for wp in ep['output_word_penalties']:
+                    for w, p_val in wp.items():
+                        all_output_word_penalties.setdefault(w, []).append(p_val)
+                for wp in ep['thinking_word_penalties']:
+                    for w, p_val in wp.items():
+                        all_thinking_word_penalties.setdefault(w, []).append(p_val)
+                for wc in ep['output_word_counts']:
+                    for w, cnt in wc.items():
+                        all_output_word_counts.setdefault(w, []).append(cnt)
+                for wc in ep['thinking_word_counts']:
+                    for w, cnt in wc.items():
+                        all_thinking_word_counts.setdefault(w, []).append(cnt)
+
+            avg_output_word_penalties = {f"output_penalty_{w}": sum(v)/len(v) for w, v in all_output_word_penalties.items()}
+            avg_thinking_word_penalties = {f"thinking_penalty_{w}": sum(v)/len(v) for w, v in all_thinking_word_penalties.items()}
+            avg_output_word_counts = {f"output_count_{w}": sum(v)/len(v) for w, v in all_output_word_counts.items()}
+            avg_thinking_word_counts = {f"thinking_count_{w}": sum(v)/len(v) for w, v in all_thinking_word_counts.items()}
+
+            total_output_words = sum(sum(v) for v in all_output_word_counts.values())
+            total_thinking_words = sum(sum(v) for v in all_thinking_word_counts.values())
 
             wandb_logger.log({
                 "loss": avg_loss,
+                "reward_mean": avg_base_reward,
                 "penalized_reward": avg_reward,
                 "penalty": avg_penalty,
+                "thinking_penalty_mean": avg_thinking_penalty,
                 "advantage_mean": avg_advantage,
+                "avg_gen_tokens": avg_gen_tokens,
                 "gradient_accumulation_step": episode // gradient_accumulation_steps,
+                "total_output_penalized_words": total_output_words,
+                "total_thinking_penalized_words": total_thinking_words,
+                **avg_output_word_penalties,
+                **avg_thinking_word_penalties,
+                **avg_output_word_counts,
+                **avg_thinking_word_counts,
             }, step=episode)
 
             # Rollout logs
@@ -292,6 +386,8 @@ def train(config_path: str = "config.yaml") -> None:
             accumulated_rewards = []
             accumulated_penalties = []
             accumulated_advantages = []
+            accumulated_base_rewards = []
+            accumulated_thinking_penalties = []
             accumulated_episodes = []
 
     wandb_logger.finish() 

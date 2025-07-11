@@ -47,6 +47,9 @@ class ShoggothFace:
     ):
         device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
+        # Informative prints before model loading
+        print(f"[INFO] Loading shoggoth model: {shoggoth_model_name}")
+        print(f"[INFO] Loading face model: {face_model_name}")
         # Load models & tokeniser --------------------------------------------------
         self.face_model, face_tokenizer, _ = load_qwen3_model(face_model_name, device)
         self.shoggoth_model, shoggoth_tokenizer, _ = load_qwen3_model(shoggoth_model_name, device)

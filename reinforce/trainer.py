@@ -40,6 +40,10 @@ def train(config_path: str = "config.yaml") -> None:
     with open(config_path, "r") as f:
         config = Config(yaml.safe_load(f))
 
+        # Informative prints at start of training
+        print(f"[INFO] Starting single-model training | Model: {config.model_name} | Task: {config.task_name}")
+        print("[INFO] Loading base model...")
+
     # Set all RNGs for reproducibility
     random.seed(config.seed)
     torch.manual_seed(config.seed)
