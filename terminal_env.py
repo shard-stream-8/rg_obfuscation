@@ -11,18 +11,23 @@ class TerminalEnvironment:
     and handles command execution for the model.
     """
     
-    def __init__(self, verifier_code: str, ground_truth: Any):
+    def __init__(self, verifier_code: str, ground_truth: Any, max_turns: int = 10):
         """
         Initialize the terminal environment.
         
         Args:
             verifier_code: The Python code for verifier.py
             ground_truth: The ground truth data for this episode
+            max_turns: Maximum number of turns allowed per episode
         """
         self.verifier_code = verifier_code
         self.ground_truth = ground_truth
+        self.max_turns = max_turns
         self.work_dir = None
         self.terminal_output = []
+        self.episode_complete = False
+        self.final_reward = 0.0
+        self.turn_count = 0
         self._setup_environment()
     
     def _setup_environment(self):
@@ -109,6 +114,67 @@ if __name__ == "__main__":
             # Restore original working directory
             os.chdir(original_cwd)
     
+    def execute_command_with_verification(self, command: str) -> Dict[str, Any]:
+        """
+        Execute command and check if it's a verifier command.
+        
+        Args:
+            command: The command to execute
+            
+        Returns:
+            Dict with output, is_verifier, reward, and completion status
+        """
+        output = self.execute_command(command)
+        self.turn_count += 1
+        
+        result = {
+            'output': output,
+            'is_verifier': command.strip().startswith('python verifier.py'),
+            'reward': 0.0,
+            'episode_complete': False,
+            'turn_count': self.turn_count,
+            'reason': None
+        }
+        
+        # Check if this was a verifier command
+        if result['is_verifier']:
+            try:
+                reward = float(output.strip())
+                result['reward'] = reward
+                
+                # If verifier returned positive, mark episode complete
+                if reward > 0.0:
+                    self.episode_complete = True
+                    self.final_reward = reward
+                    result['episode_complete'] = True
+                    result['reason'] = 'verifier_positive'
+            except (ValueError, TypeError):
+                result['reason'] = 'verifier_error'
+        
+        # Check turn limit
+        if self.turn_count >= self.max_turns:
+            result['episode_complete'] = True
+            result['reason'] = 'turn_limit'
+        
+        return result
+    
+    def is_episode_complete(self) -> bool:
+        """Check if the episode is complete (verifier returned positive or turn limit reached)."""
+        return self.episode_complete or self.turn_count >= self.max_turns
+    
+    def get_final_reward(self) -> float:
+        """Get the final reward for the episode."""
+        return self.final_reward
+    
+    def get_current_context(self) -> str:
+        """Get current terminal context for next turn."""
+        return self.get_terminal_context()
+    
+    def mark_episode_complete(self, reward: float):
+        """Mark episode as complete with final reward."""
+        self.episode_complete = True
+        self.final_reward = reward
+    
     def get_terminal_context(self) -> str:
         """
         Get the current terminal context (all previous commands and outputs).
@@ -117,6 +183,21 @@ if __name__ == "__main__":
             String containing all terminal history
         """
         return "\n".join(self.terminal_output)
+    
+    def get_episode_summary(self) -> Dict[str, Any]:
+        """
+        Get a summary of the episode for logging.
+        
+        Returns:
+            Dictionary with episode statistics
+        """
+        return {
+            'turn_count': self.turn_count,
+            'episode_complete': self.is_episode_complete(),
+            'final_reward': self.final_reward,
+            'terminal_context': self.get_terminal_context(),
+            'max_turns': self.max_turns
+        }
     
     def cleanup(self):
         """Clean up the temporary directory."""

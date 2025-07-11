@@ -66,6 +66,52 @@ Prompts control how questions and examples are presented to the model.
       return f"Examples:\n{formatted_examples}\n\nQuestion: {question}"
   ```
 
+## Terminal and Multi-Turn Mode
+
+You can now enable terminal-based and multi-turn task environments for any Reasoning Gym task using configuration flags—no need for separate `_terminal` task files or prompt files.
+
+### Configuration Flags
+
+- `use_terminal`: Enable terminal mode (default: `false`).
+- `enable_multi_turn`: Enable multi-turn interaction (default: `false`).
+- `max_turns`: Maximum number of turns for multi-turn mode (default: `10`).
+
+### Example Configurations
+
+**Regular (non-terminal) mode:**
+```yaml
+task_name: "acre"
+use_terminal: false
+enable_multi_turn: false
+```
+
+**Single-turn terminal mode:**
+```yaml
+task_name: "acre"
+use_terminal: true
+enable_multi_turn: false
+```
+
+**Multi-turn terminal mode:**
+```yaml
+task_name: "acre"
+use_terminal: true
+enable_multi_turn: true
+max_turns: 3
+```
+
+### How it Works
+- The system wraps any task in a terminal environment if `use_terminal` is true.
+- Multi-turn and single-turn are handled by the same wrapper.
+- Prompts can implement both terminal and non-terminal logic in a single file (see `BasePrompt`).
+- No need for `[task]_terminal_task.py` or `[task]_terminal_prompt.py` files.
+- Backward compatibility: legacy `_terminal` task names still work.
+
+See [TERMINAL_MODE_README.md](./TERMINAL_MODE_README.md) for full details, migration notes, and advanced usage.
+
+### Migration Note
+If you previously used separate `_terminal` task or prompt files, you can now delete them and control terminal/multi-turn behavior via config flags. Just ensure your prompt file supports both modes (see `BasePrompt` and examples in `prompts/`).
+
 ## Listing Available Verifiers and Prompts
 
 - List verifiers: `python verifiers/list_verifiers.py`

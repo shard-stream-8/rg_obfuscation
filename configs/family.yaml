@@ -1,13 +1,19 @@
 # model
 model_name: "Qwen/Qwen3-4B"
 
-# terminal task
-task_name: "acre_terminal"
-custom_verifier_path: null
+# task configuration
+task_name: "family_relationships"
+custom_verifier_path: "registry"
+custom_prompt_path: "registry"
+
+# terminal configuration
+use_terminal: true
+enable_multi_turn: true
+max_turns: 3
 
 # training
 batch_size: 4
-gradient_accumulation_steps: 4
+gradient_accumulation_steps: 1
 learning_rate: 1e-5
 num_episodes: 100
 kl_coefficient: 0.0

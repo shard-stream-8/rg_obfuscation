@@ -35,9 +35,14 @@ def get_next_run_number_wandb_api(task_name, project, entity=None):
 
 class WandbLogger:
     def __init__(self, config):
+        # Check if wandb is disabled
+        project_name = config.wandb_project
+        if project_name is None:
+            self.run = None
+            return
+            
         # Generate run name in format [task]-[number] using wandb API
         task_name = config.task_name
-        project_name = config.wandb_project
         entity = getattr(config, 'wandb_entity', None)
         run_number = get_next_run_number_wandb_api(task_name, project_name, entity)
         run_name = f"{task_name}-{run_number}"
@@ -51,7 +56,9 @@ class WandbLogger:
         )
         
     def log(self, metrics, step=None):
-        wandb.log(metrics, step=step)
+        if self.run is not None:
+            wandb.log(metrics, step=step)
         
     def finish(self):
-        wandb.finish() 
+        if self.run is not None:
+            wandb.finish() 

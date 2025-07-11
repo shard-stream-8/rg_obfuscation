@@ -7,7 +7,11 @@ try:
     from prompts.base_prompt import BasePrompt
 except ImportError:
     # Fallback for when running from within the prompts directory
-    from base_prompt import BasePrompt
+    try:
+        from base_prompt import BasePrompt
+    except ImportError:
+        # If we can't import BasePrompt, we'll use a generic type
+        BasePrompt = type('BasePrompt', (), {})
 
 class PromptRegistry:
     """
@@ -30,17 +34,44 @@ class PromptRegistry:
         """
         self._prompts[task_name] = prompt
     
-    def get_prompt(self, task_name: str) -> Optional[Union[BasePrompt, Callable]]:
+    def get_prompt(self, task_name: str, use_terminal: bool = False, enable_multi_turn: bool = False) -> Optional[Union[BasePrompt, Callable]]:
         """
         Get a prompt for a specific task.
         
         Args:
             task_name: Name of the task
+            use_terminal: Whether to use terminal mode
+            enable_multi_turn: Whether to enable multi-turn mode
             
         Returns:
             Prompt instance/callable or None if not found
         """
-        return self._prompts.get(task_name)
+        # Check for exact match first
+        if task_name in self._prompts:
+            prompt = self._prompts[task_name]
+            
+            # If it's a BasePrompt instance, configure it with terminal settings
+            if isinstance(prompt, BasePrompt):
+                prompt.use_terminal = use_terminal
+                prompt.enable_multi_turn = enable_multi_turn
+                return prompt
+            elif callable(prompt):
+                # For callable prompts, we'll pass the terminal settings via metadata
+                return prompt
+            
+        # Check for task name variations (e.g., acre_terminal -> acre)
+        if task_name.endswith('_terminal'):
+            base_task = task_name.replace('_terminal', '')
+            if base_task in self._prompts:
+                prompt = self._prompts[base_task]
+                if isinstance(prompt, BasePrompt):
+                    prompt.use_terminal = True  # Force terminal mode for _terminal tasks
+                    prompt.enable_multi_turn = enable_multi_turn
+                    return prompt
+                elif callable(prompt):
+                    return prompt
+        
+        return None
     
     def load_prompt_from_file(self, file_path: str) -> Optional[Union[BasePrompt, Callable]]:
         """
@@ -68,8 +99,8 @@ class PromptRegistry:
                 for attr_name in dir(module):
                     attr = getattr(module, attr_name)
                     if (isinstance(attr, type) and 
-                        issubclass(attr, BasePrompt) and 
-                        attr != BasePrompt):
+                        hasattr(attr, '__bases__') and
+                        any('BasePrompt' in str(base) for base in attr.__bases__)):
                         return attr()
                 
                 return None
@@ -100,10 +131,24 @@ def _auto_register_prompts():
             task_name = filename.replace('_prompt.py', '')
             file_path = os.path.join(prompts_dir, filename)
             
-            # Try to load and register the prompt
-            prompt = registry.load_prompt_from_file(file_path)
-            if prompt is not None:
-                registry.register(task_name, prompt)
+            # Try to load the module
+            spec = importlib.util.spec_from_file_location("custom_prompt", file_path)
+            module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            
+            # Prefer to register a class that inherits from BasePrompt
+            prompt_class = None
+            for attr_name in dir(module):
+                attr = getattr(module, attr_name)
+                if (isinstance(attr, type) and 
+                    hasattr(attr, '__bases__') and
+                    any('BasePrompt' in str(base) for base in attr.__bases__)):
+                    prompt_class = attr
+                    break
+            if prompt_class is not None:
+                registry.register(task_name, prompt_class())
+            elif hasattr(module, 'prompt'):
+                registry.register(task_name, module.prompt)
 
 # Auto-register on import
 _auto_register_prompts() 

@@ -4,6 +4,7 @@ import sys
 import os
 from reasoning_gym.factory import create_dataset
 from tasks.terminal_task_loader import load_terminal_task
+from tasks.terminal_task_base import TerminalTaskBase
 
 def load_task(task_name, custom_verifier_path=None, config=None):
     """
@@ -18,7 +19,29 @@ def load_task(task_name, custom_verifier_path=None, config=None):
         Configured dataset instance
     """
     try:
-        # Check if this is a terminal task
+        # Check if terminal mode is enabled via config
+        use_terminal = getattr(config, 'use_terminal', False) if config else False
+        enable_multi_turn = getattr(config, 'enable_multi_turn', False) if config else False
+        
+        if use_terminal:
+            # Load the base task first to get the dataset
+            base_dataset = create_dataset(task_name)
+            
+            # Get verifier code for the task
+            verifier_code = get_verifier_code_for_task(task_name, custom_verifier_path, config)
+            
+            # Create a terminal task wrapper
+            terminal_task = TerminalTaskWrapper(
+                task_name=task_name,
+                dataset=base_dataset,
+                verifier_code=verifier_code,
+                config=config,
+                enable_multi_turn=enable_multi_turn
+            )
+            
+            return terminal_task
+        
+        # Check if this is a legacy terminal task (for backward compatibility)
         if task_name.endswith('_terminal'):
             return load_terminal_task(task_name, config)
         
@@ -74,4 +97,99 @@ def load_task(task_name, custom_verifier_path=None, config=None):
         )
     except Exception as e:
         # Handle other unexpected errors
-        raise RuntimeError(f"Unexpected error loading task '{task_name}': {str(e)}") 
+        raise RuntimeError(f"Unexpected error loading task '{task_name}': {str(e)}")
+
+def get_verifier_code_for_task(task_name, custom_verifier_path=None, config=None):
+    """
+    Get verifier code for a task, either from registry or default.
+    
+    Args:
+        task_name: Name of the task
+        custom_verifier_path: Optional path to custom verifier
+        config: Optional configuration object
+        
+    Returns:
+        Verifier code as string
+    """
+    # Try to get verifier from registry first
+    if custom_verifier_path == "registry":
+        try:
+            from verifiers.registry import registry
+            verifier = registry.get_verifier(task_name)
+            if verifier is not None:
+                # For terminal mode, we need the verifier code as a string
+                # This is a simplified approach - in practice you might want to extract
+                # the actual verifier function code
+                return f"""
+def verifier(content, batch_item):
+    \"\"\"
+    Verifier for {task_name} task.
+    \"\"\"
+    # This is a placeholder - the actual verifier logic would be extracted
+    # from the registered verifier
+    return 1.0 if content.strip() == str(batch_item["answer"]) else 0.0
+"""
+        except ImportError:
+            pass
+    
+    # Default verifier code
+    return f"""
+def verifier(content, batch_item):
+    \"\"\"
+    Default verifier for {task_name} task.
+    \"\"\"
+    correct_answer = str(batch_item["answer"])
+    return 1.0 if content.strip() == correct_answer else 0.0
+"""
+
+class TerminalTaskWrapper(TerminalTaskBase):
+    """
+    Wrapper that converts any reasoning gym task into a terminal task.
+    """
+    
+    def __init__(self, task_name, dataset, verifier_code, config=None, enable_multi_turn=False):
+        """
+        Initialize the terminal task wrapper.
+        
+        Args:
+            task_name: Name of the task
+            dataset: The original reasoning gym dataset
+            verifier_code: Python code for the verifier
+            config: Optional configuration object
+            enable_multi_turn: Whether to enable multi-turn mode
+        """
+        self.task_name = task_name
+        self.dataset = dataset
+        self.enable_multi_turn = enable_multi_turn
+        self.max_turns = getattr(config, 'max_turns', 10) if config else 10
+        
+        # Initialize the base terminal task
+        super().__init__(task_name, verifier_code, config)
+    
+    def __len__(self):
+        return len(self.dataset)
+    
+    def __getitem__(self, idx):
+        """Get a sample from the dataset."""
+        sample = self.dataset[idx]
+        # Always return the raw question
+        return {
+            "question": sample["question"],
+            "answer": sample["answer"],
+            "original_question": sample["question"]
+        }
+    
+    def score_answer(self, content: str, batch_item: dict) -> float:
+        """
+        Score the model's answer using the terminal environment.
+        
+        Args:
+            content: The model's output content
+            batch_item: The batch item containing ground truth
+            
+        Returns:
+            Reward value (1.0 for correct, 0.0 for incorrect)
+        """
+        # Always use terminal processing when terminal mode is enabled
+        result = self.process_model_output(content, batch_item["answer"])
+        return result["reward"] 

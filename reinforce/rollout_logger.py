@@ -24,7 +24,16 @@ class RolloutLogger:
                    output_word_penalties: List[Dict[str, float]] = None,
                    thinking_word_penalties: List[Dict[str, float]] = None,
                    output_word_counts: List[Dict[str, int]] = None,
-                   thinking_word_counts: List[Dict[str, int]] = None):
+                   thinking_word_counts: List[Dict[str, int]] = None,
+                   # Multi-turn specific parameters
+                   turn_count: int = None,
+                   episode_complete: bool = None,
+                   final_reward: float = None,
+                   commands: List[str] = None,
+                   command_outputs: List[str] = None,
+                   terminal_context: str = None,
+                   episode_rewards: List[float] = None,
+                   conversation_dialogue: List[Dict[str, str]] = None):
         """Log a single rollout to JSON file."""
         
         # Helper function to convert tensors to serializable types
@@ -80,6 +89,28 @@ class RolloutLogger:
             rollout_data["rollout"]["output_word_counts"] = output_word_counts
         if thinking_word_counts is not None:
             rollout_data["rollout"]["thinking_word_counts"] = thinking_word_counts
+        
+        # Add multi-turn specific data if provided
+        if turn_count is not None:
+            rollout_data["rollout"]["multi_turn"] = {
+                "turn_count": turn_count,
+                "episode_complete": episode_complete,
+                "final_reward": final_reward,
+                "commands": commands,
+                "command_outputs": command_outputs,
+                "terminal_context": terminal_context,
+                "episode_rewards": episode_rewards
+            }
+        
+        # Add conversation dialogue if provided
+        if conversation_dialogue is not None:
+            rollout_data["rollout"]["conversation_dialogue"] = conversation_dialogue
+            # For multi-turn cases, only keep essential data
+            if "multi_turn" in rollout_data["rollout"]:
+                # Remove prompts, thinking_contents, and contents for multi-turn
+                rollout_data["rollout"].pop("prompts", None)
+                rollout_data["rollout"].pop("thinking_contents", None)
+                rollout_data["rollout"].pop("contents", None)
         
         filename = f"rollout_episode_{episode:06d}_{self.run_id}.json"
         filepath = os.path.join(self.rollouts_dir, filename)

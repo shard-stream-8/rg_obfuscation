@@ -21,6 +21,7 @@ class TerminalTaskBase:
         self.verifier_code = verifier_code
         self.config = config
         self.terminal_env = None
+        self.max_turns = getattr(config, 'max_turns', 10) if config else 10
     
     def create_terminal_environment(self, ground_truth: Any) -> TerminalEnvironment:
         """
@@ -32,7 +33,7 @@ class TerminalTaskBase:
         Returns:
             TerminalEnvironment instance
         """
-        return TerminalEnvironment(self.verifier_code, ground_truth)
+        return TerminalEnvironment(self.verifier_code, ground_truth, self.max_turns)
     
     def extract_commands(self, content: str) -> List[str]:
         """
@@ -96,6 +97,85 @@ class TerminalTaskBase:
         except (ValueError, TypeError):
             # If output can't be parsed as float, return 0.0
             return 0.0
+    
+    def process_single_command(self, content: str, ground_truth: Any, 
+                             existing_state: Optional[Dict] = None) -> Dict[str, Any]:
+        """
+        Process a single command from the model.
+        
+        Args:
+            content: Model output containing a single command
+            ground_truth: Ground truth for this episode
+            existing_state: State from previous turns (None for first turn)
+            
+        Returns:
+            Dictionary with command output, episode status, and reward info
+        """
+        # Use or create terminal environment, and always store it back in the state
+        if existing_state is not None and 'terminal_env' in existing_state and existing_state['terminal_env'] is not None:
+            self.terminal_env = existing_state['terminal_env']
+        else:
+            self.terminal_env = self.create_terminal_environment(ground_truth)
+            if existing_state is not None:
+                existing_state['terminal_env'] = self.terminal_env
+        
+        try:
+            # Extract single command
+            commands = self.extract_commands(content)
+            
+            if not commands:
+                return {
+                    'reward': 0.0,
+                    'episode_complete': False,
+                    'command_output': "No command found",
+                    'terminal_context': self.terminal_env.get_terminal_context() if self.terminal_env else "",
+                    'turn_count': self.terminal_env.turn_count if self.terminal_env else 0,
+                    'is_verifier': False,
+                    'reason': 'no_command'
+                }
+            
+            # Execute the first command
+            command = commands[0]
+            result = self.terminal_env.execute_command_with_verification(command)
+            
+            return {
+                'reward': result['reward'],
+                'episode_complete': result['episode_complete'],
+                'command_output': result['output'],
+                'terminal_context': self.terminal_env.get_terminal_context() if self.terminal_env else "",
+                'turn_count': result['turn_count'],
+                'is_verifier': result['is_verifier'],
+                'reason': result['reason'],
+                'command': command
+            }
+        
+        except Exception as e:
+            return {
+                'reward': 0.0,
+                'episode_complete': False,
+                'command_output': f"Error: {str(e)}",
+                'terminal_context': self.terminal_env.get_terminal_context() if self.terminal_env else "",
+                'turn_count': self.terminal_env.turn_count if self.terminal_env else 0,
+                'is_verifier': False,
+                'reason': 'error'
+            }
+    
+    def is_episode_complete(self, terminal_env: TerminalEnvironment) -> bool:
+        """Check if episode should terminate."""
+        return terminal_env.is_episode_complete()
+    
+    def get_episode_reward(self, terminal_env: TerminalEnvironment) -> float:
+        """Get the final reward for the episode."""
+        return terminal_env.get_final_reward()
+    
+    def create_episode_state(self) -> Dict:
+        """Create initial state for a new episode."""
+        return {'terminal_env': None, 'turn_count': 0}
+    
+    def update_episode_state(self, state: Dict, command_output: str) -> Dict:
+        """Update episode state with new command output."""
+        state['turn_count'] = state.get('turn_count', 0) + 1
+        return state
     
     def process_model_output(self, content: str, ground_truth: Any) -> Dict[str, Any]:
         """
