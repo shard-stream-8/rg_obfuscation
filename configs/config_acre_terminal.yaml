@@ -1,0 +1,24 @@
+# model
+model_name: "Qwen/Qwen3-4B"
+
+# terminal task
+task_name: "acre_terminal"
+custom_verifier_path: null
+
+# training
+batch_size: 4
+gradient_accumulation_steps: 4
+learning_rate: 1e-5
+num_episodes: 100
+kl_coefficient: 0.0
+min_thinking_tokens: 0
+max_thinking_tokens: 384
+max_new_tokens: 512
+seed: 42
+device: "cuda"
+
+# wandb
+wandb_project: "qwen3-reinforce-reasongym"
+wandb_entity: null
+# Optional Hugging Face repo to push the trained model (or LoRA adapters)
+hf_repo_out: null 

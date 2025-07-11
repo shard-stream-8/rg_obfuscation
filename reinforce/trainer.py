@@ -218,36 +218,11 @@ def train(config_path: str = "config.yaml") -> None:
         thinking_word_counts = []
         
         for b, c, thinking_c in zip(batch, contents, thinking_contents):
-            # Get the verifier to calculate base reward and penalty separately
-            if hasattr(task, 'score_answer') and hasattr(task.score_answer, 'calculate_word_penalty'):
-                verifier = task.score_answer
-                base_reward = verifier.verify(c, b)
-                penalty = verifier.calculate_word_penalty(c)
-                
-                # Calculate penalties for logging (even when disabled)
-                output_penalty_for_logging = 0.0
-                thinking_penalty_for_logging = 0.0
-                output_word_penalties_dict = {}
-                thinking_word_penalties_dict = {}
-                output_word_counts_dict = {}
-                thinking_word_counts_dict = {}
-                
-                if hasattr(verifier, 'calculate_word_penalty_for_logging'):
-                    output_penalty_for_logging = verifier.calculate_word_penalty_for_logging(c)
-                if hasattr(verifier, 'calculate_thinking_penalty_for_logging'):
-                    thinking_penalty_for_logging = verifier.calculate_thinking_penalty_for_logging(thinking_c)
-                if hasattr(verifier, 'calculate_individual_word_penalties'):
-                    output_word_penalties_dict = verifier.calculate_individual_word_penalties(c)
-                if hasattr(verifier, 'calculate_individual_thinking_word_penalties'):
-                    thinking_word_penalties_dict = verifier.calculate_individual_thinking_word_penalties(thinking_c)
-                if hasattr(verifier, 'calculate_raw_word_counts'):
-                    output_word_counts_dict = verifier.calculate_raw_word_counts(c)
-                if hasattr(verifier, 'calculate_raw_thinking_word_counts'):
-                    thinking_word_counts_dict = verifier.calculate_raw_thinking_word_counts(thinking_c)
-                
-                penalized_reward = base_reward - penalty
-            else:
-                base_reward = task.score_answer(c, b)
+            # Handle terminal tasks differently
+            if hasattr(task, 'process_model_output'):
+                # This is a terminal task
+                result = task.process_model_output(c, b['answer'])
+                base_reward = result['reward']
                 penalty = 0.0
                 thinking_penalty_for_logging = 0.0
                 output_penalty_for_logging = 0.0
@@ -256,6 +231,56 @@ def train(config_path: str = "config.yaml") -> None:
                 output_word_counts_dict = {}
                 thinking_word_counts_dict = {}
                 penalized_reward = base_reward
+                
+                # Store terminal-specific metrics for later addition to episode data
+                terminal_metrics = {}
+                if 'terminal_context' in result:
+                    terminal_metrics['terminal_context'] = result['terminal_context']
+                if 'command_output' in result:
+                    terminal_metrics['command_output'] = result['command_output']
+                if 'verifier_used' in result:
+                    terminal_metrics['verifier_used'] = result['verifier_used']
+                if 'commands_executed' in result:
+                    terminal_metrics['commands_executed'] = result['commands_executed']
+            else:
+                # Get the verifier to calculate base reward and penalty separately
+                if hasattr(task, 'score_answer') and hasattr(task.score_answer, 'calculate_word_penalty'):
+                    verifier = task.score_answer
+                    base_reward = verifier.verify(c, b)
+                    penalty = verifier.calculate_word_penalty(c)
+                    
+                    # Calculate penalties for logging (even when disabled)
+                    output_penalty_for_logging = 0.0
+                    thinking_penalty_for_logging = 0.0
+                    output_word_penalties_dict = {}
+                    thinking_word_penalties_dict = {}
+                    output_word_counts_dict = {}
+                    thinking_word_counts_dict = {}
+                    
+                    if hasattr(verifier, 'calculate_word_penalty_for_logging'):
+                        output_penalty_for_logging = verifier.calculate_word_penalty_for_logging(c)
+                    if hasattr(verifier, 'calculate_thinking_penalty_for_logging'):
+                        thinking_penalty_for_logging = verifier.calculate_thinking_penalty_for_logging(thinking_c)
+                    if hasattr(verifier, 'calculate_individual_word_penalties'):
+                        output_word_penalties_dict = verifier.calculate_individual_word_penalties(c)
+                    if hasattr(verifier, 'calculate_individual_thinking_word_penalties'):
+                        thinking_word_penalties_dict = verifier.calculate_individual_thinking_word_penalties(thinking_c)
+                    if hasattr(verifier, 'calculate_raw_word_counts'):
+                        output_word_counts_dict = verifier.calculate_raw_word_counts(c)
+                    if hasattr(verifier, 'calculate_raw_thinking_word_counts'):
+                        thinking_word_counts_dict = verifier.calculate_raw_thinking_word_counts(thinking_c)
+                    
+                    penalized_reward = base_reward - penalty
+                else:
+                    base_reward = task.score_answer(c, b)
+                    penalty = 0.0
+                    thinking_penalty_for_logging = 0.0
+                    output_penalty_for_logging = 0.0
+                    output_word_penalties_dict = {}
+                    thinking_word_penalties_dict = {}
+                    output_word_counts_dict = {}
+                    thinking_word_counts_dict = {}
+                    penalized_reward = base_reward
             
             base_rewards.append(base_reward)
             penalties.append(penalty)
@@ -335,7 +360,7 @@ def train(config_path: str = "config.yaml") -> None:
         accumulated_thinking_penalties.extend(thinking_penalties.tolist())
         accumulated_advantages.extend(advantage.tolist())
         accumulated_kl_penalties.extend(kl_penalty.tolist())
-        accumulated_episodes.append({
+        episode_data = {
             'episode': episode,
             'prompts': prompts,
             'targets': targets,
@@ -351,7 +376,13 @@ def train(config_path: str = "config.yaml") -> None:
             'thinking_word_counts': thinking_word_counts,
             'loss': loss.item() * gradient_accumulation_steps,  # Scale back for logging
             'kl_penalty_mean': kl_penalty.mean().item(),
-        })
+        }
+        
+        # Add terminal-specific metrics if they exist
+        if 'terminal_metrics' in locals():
+            episode_data.update(terminal_metrics)
+        
+        accumulated_episodes.append(episode_data)
 
         # Perform optimizer step and logging at the end of accumulation
         if (episode + 1) % gradient_accumulation_steps == 0 or episode == config.num_episodes - 1:

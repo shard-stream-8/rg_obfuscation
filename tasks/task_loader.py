@@ -3,6 +3,7 @@ import importlib.util
 import sys
 import os
 from reasoning_gym.factory import create_dataset
+from tasks.terminal_task_loader import load_terminal_task
 
 def load_task(task_name, custom_verifier_path=None, config=None):
     """
@@ -17,6 +18,10 @@ def load_task(task_name, custom_verifier_path=None, config=None):
         Configured dataset instance
     """
     try:
+        # Check if this is a terminal task
+        if task_name.endswith('_terminal'):
+            return load_terminal_task(task_name, config)
+        
         # Use reasoning_gym's automatic factory to create the dataset
         dataset = create_dataset(task_name)
         

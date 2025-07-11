@@ -9,7 +9,7 @@ class AcrePrompt(BasePrompt):
     """
     Custom prompt for acre task.
     
-    Formats the examples with boxed answers and uses the new prompt instructions.
+    Formats the examples with command-based answers and uses the new prompt instructions.
     """
     
     def __call__(self, question: str, examples: list = None, metadata: dict = None) -> str:
@@ -58,7 +58,10 @@ class AcrePrompt(BasePrompt):
 
 Each example shows the results of placing different combinations of objects on the detector. Each object is described by color, material and shape. Your task is to determine whether a new combination of objects will cause the detector to activate.
 
-After observing the previous examples, respond with: boxed{{on}} if you can determine the detector light will turn on, boxed{{off}} if you can determine the detector light will stay off, and boxed{{undetermined}} if there is insufficient evidence to reach a conclusion.
+After observing the previous examples, respond with:
+- <command>python verifier on</command> if you can determine the detector light will turn on
+- <command>python verifier off</command> if you can determine the detector light will stay off  
+- <command>python verifier undetermined</command> if there is insufficient evidence to reach a conclusion
 
 Previous experimental results:
 {formatted_examples}
@@ -66,7 +69,7 @@ Previous experimental results:
 New test case:
 {new_test_case}
 
-Answer immediately with boxed{{on}}, boxed{{off}}, or boxed{{undetermined}} and then provide a brief explanation of your answer.
+Answer immediately with the appropriate command and then provide a brief explanation of your answer.
 
 What is the detector light status?"""
 
