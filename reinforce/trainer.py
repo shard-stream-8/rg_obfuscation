@@ -31,6 +31,9 @@ class Config:
     def _ensure_defaults(self):
         if not hasattr(self, 'hf_repo_out'):
             self.hf_repo_out = None
+        # New optional model for shoggoth-face split training
+        if not hasattr(self, 'shoggoth_name'):
+            self.shoggoth_name = None
 
 
 def train(config_path: str = "config.yaml") -> None:

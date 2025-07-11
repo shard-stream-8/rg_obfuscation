@@ -1,18 +1,21 @@
-import argparse
 import sys
-from reinforce.trainer import train
+import yaml
+
+from reinforce.trainer import train as single_model_train
+from reinforce.shoggoth_face_trainer import train as shoggoth_face_train
+from reinforce.trainer import Config
+
+
+def main():
+    config_path = sys.argv[1] if len(sys.argv) > 1 else "config.yaml"
+    with open(config_path, "r") as f:
+        cfg = Config(yaml.safe_load(f))
+
+    if cfg.shoggoth_name is None:
+        single_model_train(config_path)
+    else:
+        shoggoth_face_train(config_path)
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Train with reinforcement learning using a config YAML file")
-    parser.add_argument("config", help="Path to the config YAML file")
-    
-    args = parser.parse_args()
-    
-    try:
-        train(args.config)
-    except FileNotFoundError:
-        print(f"Error: Config file '{args.config}' not found.")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Error during training: {e}")
-        sys.exit(1) 
+    main() 
