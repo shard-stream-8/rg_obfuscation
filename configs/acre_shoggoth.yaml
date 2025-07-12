@@ -1,0 +1,33 @@
+# model
+model_name: "Qwen/Qwen3-4B"
+shoggoth_name: "Qwen/Qwen3-4B"
+
+# reasoning gym
+task_name: "acre"
+custom_verifier_path: "registry" # "registry" automatically finds the custom verifier in /verifiers for the selected task
+custom_prompt_path: "registry" # "registry" automatically finds the custom prompt in /prompts for the selected task
+
+# training
+batch_size: 2
+gradient_accumulation_steps: 4
+learning_rate: 1e-5
+num_episodes: 1000
+kl_coefficient: 0.0
+min_thinking_tokens: 0
+max_thinking_tokens: 128
+max_new_tokens: 256
+seed: 42
+device: "cuda"
+
+# penalty configuration
+word_penalty:
+  enabled: true
+  words: ["detector", "light"]
+  penalty_per_word: 0.25
+  max_penalty: 1
+
+# wandb
+wandb_project: "qwen3-reinforce-reasongym"
+wandb_entity: null
+# Optional Hugging Face repo to push the trained model (or LoRA adapters)
+hf_repo_out: null
