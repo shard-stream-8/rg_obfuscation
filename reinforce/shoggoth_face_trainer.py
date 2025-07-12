@@ -6,6 +6,7 @@ import gc
 
 from models.qwen3 import prepare_thinking_input
 from reinforce.logit_processor import BatchThinkingTokenBudgetProcessor
+from reinforce.logit_processor import MinOutputTokensProcessor
 from tasks.task_loader import load_task
 from tasks.prompt_templates import create_custom_prompt
 from reinforce.utils import zero_special_token_grads
@@ -66,6 +67,14 @@ def train(config_path: str = "config.yaml") -> None:
     # ------------------------------------------------------------------
     # Generation engine wrapper (loads models internally)
     # ------------------------------------------------------------------
+    min_output_tokens = getattr(config, 'min_output_tokens', None)
+    # Check constraint when min_output_tokens is set
+    if min_output_tokens is not None:
+        if config.max_new_tokens <= config.max_thinking_tokens + min_output_tokens:
+            raise ValueError(
+                "max_new_tokens must be greater than max_thinking_tokens + min_output_tokens"
+            )
+
     gen_engine = ShoggothFace(
         shoggoth_model_name=config.shoggoth_name,
         face_model_name=config.model_name,
@@ -73,6 +82,7 @@ def train(config_path: str = "config.yaml") -> None:
         batch_size=config.batch_size,
         max_thinking_tokens=config.max_thinking_tokens,
         min_thinking_tokens=config.min_thinking_tokens,
+        min_output_tokens=min_output_tokens,
     )
 
     tokenizer = gen_engine.tokenizer

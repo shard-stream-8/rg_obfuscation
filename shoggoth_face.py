@@ -5,6 +5,7 @@ from transformers import LogitsProcessorList
 # Local imports
 from models.qwen3 import load_qwen3_model
 from reinforce.logit_processor import BatchThinkingTokenBudgetProcessor
+from reinforce.logit_processor import MinOutputTokensProcessor
 
 
 class ShoggothFace:
@@ -43,6 +44,7 @@ class ShoggothFace:
         batch_size: int = 8,
         max_thinking_tokens: int | None = None,
         min_thinking_tokens: int = 0,
+        min_output_tokens: int | None = None,
         logit_processor=None,
     ):
         device = device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -78,6 +80,9 @@ class ShoggothFace:
             self.logit_processor = LogitsProcessorList(logit_processor)
         else:
             self.logit_processor = LogitsProcessorList([logit_processor])
+
+        # Store answer-length constraint
+        self.min_output_tokens = min_output_tokens
 
     @torch.no_grad()
     def generate(self, prompt_inputs, max_thinking_tokens, max_new_tokens, **gen_kwargs):
@@ -169,10 +174,22 @@ class ShoggothFace:
         if face_max_new_tokens < 0:
             face_max_new_tokens = 0
 
+        # Build logits processor for answer phase if minimum output tokens requested
+        answer_processors = None
+        if self.min_output_tokens is not None:
+            answer_processors = LogitsProcessorList([
+                MinOutputTokensProcessor(
+                    self.tokenizer,
+                    min_output_tokens=self.min_output_tokens,
+                    batch_size=input_ids_face.size(0),
+                )
+            ])
+
         face_outputs = self.face_model.generate(
             input_ids=input_ids_face,
             attention_mask=attention_mask_face,
             max_new_tokens=face_max_new_tokens,
+            logits_processor=answer_processors,
             return_dict_in_generate=True,
             output_scores=True,
             **gen_kwargs,
