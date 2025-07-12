@@ -107,10 +107,10 @@ class RolloutLogger:
             rollout_data["rollout"]["conversation_dialogue"] = conversation_dialogue
             # For multi-turn cases, only keep essential data
             if "multi_turn" in rollout_data["rollout"]:
-                # Remove prompts, thinking_contents, and contents for multi-turn
+                # Remove prompts and contents for multi-turn, but keep thinking_contents
                 rollout_data["rollout"].pop("prompts", None)
-                rollout_data["rollout"].pop("thinking_contents", None)
                 rollout_data["rollout"].pop("contents", None)
+                # Keep thinking_contents for analysis
         
         filename = f"rollout_episode_{episode:06d}_{self.run_id}.json"
         filepath = os.path.join(self.rollouts_dir, filename)

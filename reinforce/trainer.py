@@ -129,7 +129,6 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
         
         # Apply custom prompt if available
         if custom_prompt is not None:
-            print(f"DEBUG: Using custom prompt for task {config.task_name}")
             # Get terminal configuration for metadata
             use_terminal = getattr(config, 'use_terminal', False)
             enable_multi_turn = getattr(config, 'enable_multi_turn', False)
@@ -171,6 +170,9 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
         conversation_dialogue = [{"role": "human", "content": prompts[0]}]
 
         for turn in range(max_turns):
+            # Reset logit processor state for each turn to ensure thinking token limits are enforced
+            logit_processor.reset()
+            
             # Build the conversation for this turn
             if turn == 0:
                 # First turn - just the initial prompt
@@ -250,11 +252,6 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             # Process the single command
             result = task.process_single_command(content, batch[0]['answer'], episode_state)
             
-            # Add the terminal output to the conversation dialogue
-            if result.get('terminal_context', ''):
-                terminal_message = f"Your command was executed. Here is the output:\n\n{result['terminal_context']}\n\nWhat's your next command?"
-                conversation_dialogue.append({"role": "human", "content": terminal_message})
-            
             # Store turn information
             episode_commands.append(content)
             episode_outputs.append(result['command_output'])
@@ -268,11 +265,23 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             episode_state['terminal_context'] = result['terminal_context']
             episode_state['terminal_env'] = task.terminal_env
             
-            # If no command was generated, end the episode
+            # If no command was generated, complain and ask for a command instead of ending
             if not content.strip():
-                episode_complete = True
-                final_reward = 0.0
-                break
+                no_command_message = "You didn't generate any command. Please think about what command you need to run and generate it. Remember to use <command></command> tags."
+                conversation_dialogue.append({"role": "human", "content": no_command_message})
+                # Don't end the episode, continue to next turn
+                continue
+            
+            # Add the terminal output to the conversation dialogue (only if a command was actually executed)
+            if result.get('terminal_context', '') and content.strip():
+                # Check if the verifier returned 0 (wrong answer)
+                if result.get('reward', 0.0) == 0.0 and result.get('is_verifier', False):
+                    # Model got a wrong answer, ask it to think about why
+                    terminal_message = f"Your command was executed. Here is the output:\n\n{result['terminal_context']}\n\nThe verifier returned 0.0, which means your answer was incorrect. Please think about why your previous answer was wrong and try a different approach. What's your next command?"
+                else:
+                    # Normal terminal output
+                    terminal_message = f"Your command was executed. Here is the output:\n\n{result['terminal_context']}\n\nWhat's your next command?"
+                conversation_dialogue.append({"role": "human", "content": terminal_message})
             
             # Check if episode is complete (verifier returned 1 or max_turns reached)
             if result['episode_complete']:
