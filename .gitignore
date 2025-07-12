@@ -77,3 +77,4 @@ dmypy.json
 # Project specific
 rollouts/
 wandb/
+nohup.out

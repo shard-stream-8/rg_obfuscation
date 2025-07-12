@@ -61,3 +61,66 @@ class BatchThinkingTokenBudgetProcessor(LogitsProcessor):
                 for tid in self.think_end_tokens:
                     scores[batch_idx][tid] = self.neg_inf
         return scores 
+
+# -----------------------------------------------------------------------------
+# NEW: Processor to enforce a minimum number of answer tokens after </think>
+# -----------------------------------------------------------------------------
+class MinOutputTokensProcessor(LogitsProcessor):
+    """Disallow EOS until *min_output_tokens* tokens have been generated *after* the
+    first </think> token. This prevents the model from immediately terminating
+    its visible answer once it has finished thinking.
+
+    Parameters
+    ----------
+    tokenizer : transformers.PreTrainedTokenizer
+        Tokenizer whose special tokens are used to identify </think> and EOS.
+    min_output_tokens : int | None
+        Required number of tokens after </think>. If ``None`` or ``0`` the
+        processor becomes a no-op.
+    batch_size : int, default 8
+        Used to size internal bookkeeping arrays.
+    """
+
+    def __init__(self, tokenizer, min_output_tokens=None, batch_size: int = 8):
+        self.tokenizer = tokenizer
+        self.min_output_tokens = (
+            None if min_output_tokens in (None, "null") else int(min_output_tokens)
+        )
+        self.batch_size = batch_size
+        self.end_think_token_id = tokenizer.encode("</think>", add_special_tokens=False)[0]
+        self.eos_token_id = tokenizer.eos_token_id
+        # Fail fast if EOS token is unavailable – the processor cannot operate without it
+        if self.eos_token_id is None:
+            raise ValueError("Tokenizer has no eos_token_id; MinOutputTokensProcessor requires a defined EOS token.")
+        self.neg_inf = -1e10
+
+    def reset(self):
+        """No persistent state is required but keep for API symmetry."""
+        pass
+
+    def __call__(self, input_ids: torch.LongTensor, scores: torch.FloatTensor) -> torch.FloatTensor:
+        # Fast-exit when disabled
+        if not self.min_output_tokens or self.min_output_tokens <= 0:
+            return scores
+
+        batch_size = input_ids.size(0)
+        vocab_size = scores.size(1)
+        # Ensure eos_token_id is within the model's vocabulary
+        if self.eos_token_id >= vocab_size:
+            raise ValueError(
+                f"eos_token_id ({self.eos_token_id}) is outside the model's vocabulary (size {vocab_size})."
+            )
+
+        for batch_idx in range(batch_size):
+            seq = input_ids[batch_idx]
+            # Locate last </think> token in the sequence so far
+            try:
+                end_pos = (seq == self.end_think_token_id).nonzero(as_tuple=False)[-1].item()
+            except IndexError:
+                # </think> not yet emitted – nothing to enforce
+                continue
+
+            tokens_after = seq.size(0) - end_pos - 1  # how many tokens after </think>
+            if tokens_after < self.min_output_tokens:
+                scores[batch_idx][self.eos_token_id] = self.neg_inf
+        return scores 

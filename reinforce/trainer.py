@@ -5,6 +5,7 @@ import gc
 
 from models.qwen3 import load_qwen3_model, prepare_thinking_input
 from reinforce.logit_processor import BatchThinkingTokenBudgetProcessor
+from reinforce.logit_processor import MinOutputTokensProcessor
 from tasks.task_loader import load_task
 from tasks.prompt_templates import create_custom_prompt
 from reinforce.utils import zero_special_token_grads
@@ -96,12 +97,31 @@ def train(config_path: str = "config.yaml") -> None:
     )
 
     # Processor that constrains the number of <think> tokens ---------------
-    logit_processor = BatchThinkingTokenBudgetProcessor(
+    thinking_processor = BatchThinkingTokenBudgetProcessor(
         tokenizer,
         max_thinking_tokens=config.max_thinking_tokens,
         batch_size=config.batch_size,
         min_thinking_tokens=config.min_thinking_tokens,
     )
+
+    # Optional processor enforcing minimum answer length after </think>
+    min_output_tokens = getattr(config, 'min_output_tokens', None)
+    # Sanity check: if set, ensure max_new_tokens is sufficient
+    if min_output_tokens is not None:
+        if config.max_new_tokens <= config.max_thinking_tokens + min_output_tokens:
+            raise ValueError(
+                "max_new_tokens must be greater than max_thinking_tokens + min_output_tokens"
+            )
+
+    processors = [thinking_processor]
+    if min_output_tokens is not None:
+        processors.append(
+            MinOutputTokensProcessor(
+                tokenizer,
+                min_output_tokens=min_output_tokens,
+                batch_size=config.batch_size,
+            )
+        )
 
     # Gradient accumulation variables
     gradient_accumulation_steps = getattr(config, 'gradient_accumulation_steps', 1)
@@ -117,8 +137,10 @@ def train(config_path: str = "config.yaml") -> None:
     for episode in range(config.num_episodes):
         model.eval()
 
-        # Reset logit processor state for new episode
-        logit_processor.reset()
+        # Reset processors state for new episode (if they implement reset)
+        for proc in processors:
+            if hasattr(proc, 'reset'):
+                proc.reset()
 
         batch_indices = [random.randrange(len(task)) for _ in range(config.batch_size)]
         batch        = [task[idx] for idx in batch_indices]
@@ -154,7 +176,7 @@ def train(config_path: str = "config.yaml") -> None:
                 outputs = model.generate(
                     **model_inputs,
                     max_new_tokens=config.max_new_tokens,
-                    logits_processor=[logit_processor],
+                    logits_processor=processors,
                     return_dict_in_generate=True,
                     output_scores=True,
                 )
