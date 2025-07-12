@@ -36,7 +36,7 @@ def get_next_run_number_wandb_api(task_name, project, entity=None):
 class WandbLogger:
     def __init__(self, config):
         # Generate run name in format [task]-[number] using wandb API
-        task_name = config.task_name
+        task_name = config.task_name_for_wandb
         project_name = config.wandb_project
         entity = getattr(config, 'wandb_entity', None)
         run_number = get_next_run_number_wandb_api(task_name, project_name, entity)

@@ -2,6 +2,7 @@
 import random
 import torch
 import yaml
+import gc
 
 from models.qwen3 import prepare_thinking_input
 from reinforce.logit_processor import BatchThinkingTokenBudgetProcessor
@@ -140,11 +141,21 @@ def train(config_path: str = "config.yaml") -> None:
         # ------------------------------------------------------------------
         # Generation (shoggoth then face) --------------------------------
         # ------------------------------------------------------------------
-        gen_dict = gen_engine.generate(
-            prompt_inputs,
-            max_thinking_tokens=config.max_thinking_tokens,
-            max_new_tokens=config.max_new_tokens,
-        )
+        try:
+            gen_dict = gen_engine.generate(
+                prompt_inputs,
+                max_thinking_tokens=config.max_thinking_tokens,
+                max_new_tokens=config.max_new_tokens,
+            )
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
+            if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
+                print(f"Episode {episode}: CUDA OOM during generation. Skipping episode and clearing cache.")
+                torch.cuda.empty_cache()
+                gc.collect()
+                optimizer.zero_grad(set_to_none=True)
+                continue
+            else:
+                raise
 
         full_ids     = gen_dict["sequences"]          # tensor (B, T)
         think_mask   = gen_dict["think_mask"]          # (B, T-1) bool
@@ -250,8 +261,18 @@ def train(config_path: str = "config.yaml") -> None:
         # ------------------------------------------------------------------
         # Forward passes & log-prob extraction ----------------------------
         # ------------------------------------------------------------------
-        shog_logits = gen_engine.shoggoth_model(full_ids).logits[:, :-1]
-        face_logits = gen_engine.face_model(full_ids).logits[:, :-1]
+        try:
+            shog_logits = gen_engine.shoggoth_model(full_ids).logits[:, :-1]
+            face_logits = gen_engine.face_model(full_ids).logits[:, :-1]
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
+            if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
+                print(f"Episode {episode}: CUDA OOM during forward pass. Skipping episode and clearing cache.")
+                torch.cuda.empty_cache()
+                gc.collect()
+                optimizer.zero_grad(set_to_none=True)
+                continue
+            else:
+                raise
 
         policy_log_probs_shog = torch.log_softmax(shog_logits, dim=-1)
         policy_log_probs_face = torch.log_softmax(face_logits, dim=-1)
@@ -272,7 +293,17 @@ def train(config_path: str = "config.yaml") -> None:
         advantage = rewards - baseline
 
         loss = -(advantage * logp_per_seq).mean() / gradient_accumulation_steps
-        loss.backward()
+        try:
+            loss.backward()
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
+            if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
+                print(f"Episode {episode}: CUDA OOM during backward pass. Skipping episode and clearing cache.")
+                torch.cuda.empty_cache()
+                gc.collect()
+                optimizer.zero_grad(set_to_none=True)
+                continue
+            else:
+                raise
 
         # ------------------------------------------------------------------
         # Bookkeeping for accumulation -----------------------------------

@@ -1,6 +1,7 @@
 import random
 import torch
 import yaml
+import gc
 
 from models.qwen3 import load_qwen3_model, prepare_thinking_input
 from reinforce.logit_processor import BatchThinkingTokenBudgetProcessor
@@ -148,14 +149,24 @@ def train(config_path: str = "config.yaml") -> None:
 
         prompt_lens = (model_inputs.input_ids != tokenizer.pad_token_id).sum(dim=1)
 
-        with torch.no_grad():
-            outputs = model.generate(
-                **model_inputs,
-                max_new_tokens=config.max_new_tokens,
-                logits_processor=[logit_processor],
-                return_dict_in_generate=True,
-                output_scores=True,
-            )
+        try:
+            with torch.no_grad():
+                outputs = model.generate(
+                    **model_inputs,
+                    max_new_tokens=config.max_new_tokens,
+                    logits_processor=[logit_processor],
+                    return_dict_in_generate=True,
+                    output_scores=True,
+                )
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
+            if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
+                print(f"Episode {episode}: CUDA OOM during generation. Skipping episode and clearing cache.")
+                torch.cuda.empty_cache()
+                gc.collect()
+                optimizer.zero_grad(set_to_none=True)
+                continue
+            else:
+                raise
         generated_ids = outputs.sequences  # (B, prompt_len + gen_len)
 
         thinking_contents, contents = [], []
@@ -292,7 +303,17 @@ def train(config_path: str = "config.yaml") -> None:
         full_ids = full_ids.to(device)
 
         # Forward pass through the policy network -------------------------
-        logits = model(full_ids).logits  # (B, T, V)
+        try:
+            logits = model(full_ids).logits  # (B, T, V)
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
+            if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
+                print(f"Episode {episode}: CUDA OOM during forward pass. Skipping episode and clearing cache.")
+                torch.cuda.empty_cache()
+                gc.collect()
+                optimizer.zero_grad(set_to_none=True)
+                continue
+            else:
+                raise
 
         # Compute log‑probs for each *next* token -------------------------
         policy_log_probs = torch.log_softmax(logits[:, :-1], dim=-1)  # predict t+1
@@ -325,7 +346,17 @@ def train(config_path: str = "config.yaml") -> None:
         # Scale loss by gradient accumulation steps to maintain the same effective learning rate
         # Only apply KL penalty to loss if coefficient > 0
         loss = -((advantage - config.kl_coefficient * kl_penalty.detach()) * logp_per_seq).mean() / gradient_accumulation_steps
-        loss.backward()
+        try:
+            loss.backward()
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
+            if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
+                print(f"Episode {episode}: CUDA OOM during backward pass. Skipping episode and clearing cache.")
+                torch.cuda.empty_cache()
+                gc.collect()
+                optimizer.zero_grad(set_to_none=True)
+                continue
+            else:
+                raise
 
         # Store metrics for logging
         accumulated_loss += loss.item() * gradient_accumulation_steps  # Scale back for logging
