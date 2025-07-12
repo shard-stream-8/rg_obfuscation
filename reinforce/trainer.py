@@ -308,9 +308,12 @@ def train(config_path: str = "config.yaml") -> None:
         except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
             if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
                 print(f"Episode {episode}: CUDA OOM during forward pass. Skipping episode and clearing cache.")
+                for _var in ['full_ids', 'logits']:
+                    if _var in locals():
+                        del locals()[_var]
+                optimizer.zero_grad(set_to_none=True)
                 torch.cuda.empty_cache()
                 gc.collect()
-                optimizer.zero_grad(set_to_none=True)
                 continue
             else:
                 raise
@@ -351,9 +354,11 @@ def train(config_path: str = "config.yaml") -> None:
         except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
             if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
                 print(f"Episode {episode}: CUDA OOM during backward pass. Skipping episode and clearing cache.")
+                if 'loss' in locals():
+                    del loss
+                optimizer.zero_grad(set_to_none=True)
                 torch.cuda.empty_cache()
                 gc.collect()
-                optimizer.zero_grad(set_to_none=True)
                 continue
             else:
                 raise

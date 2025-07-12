@@ -2036,3 +2036,562 @@ Loaded custom verifier for task 'acre' from registry
 [INFO] Loading face model: Qwen/Qwen3-4B
 Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.48it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.46it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.17it/s]
 Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.48it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.46it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.17it/s]
+Episode 293: CUDA OOM during backward pass. Skipping episode and clearing cache.
+Episode 294: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 295: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 296: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 297: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 298: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 299: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 300: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 301: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 302: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 303: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 304: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 305: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 306: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 307: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 308: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 309: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 310: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 311: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 312: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 313: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 314: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 315: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 316: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 317: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 318: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 319: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 320: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 321: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 322: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 323: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 324: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 325: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 326: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 327: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 328: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 329: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 330: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 331: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 332: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 333: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 334: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 335: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 336: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 337: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 338: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 339: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 340: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 341: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 342: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 343: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 344: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 345: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 346: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 347: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 348: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 349: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 350: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 351: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 352: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 353: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 354: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 355: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 356: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 357: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 358: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 359: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 360: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 361: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 362: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 363: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 364: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 365: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 366: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 367: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 368: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 369: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 370: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 371: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 372: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 373: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 374: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 375: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 376: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 377: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 378: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 379: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 380: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 381: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 382: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 383: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 384: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 385: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 386: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 387: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 388: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 389: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 390: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 391: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 392: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 393: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 394: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 395: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 396: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 397: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 398: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 399: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 400: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 401: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 402: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 403: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 404: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 405: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 406: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 407: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 408: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 409: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 410: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 411: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 412: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 413: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 414: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 415: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 416: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 417: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 418: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 419: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 420: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 421: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 422: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 423: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 424: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 425: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 426: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 427: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 428: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 429: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 430: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 431: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 432: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 433: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 434: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 435: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 436: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 437: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 438: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 439: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 440: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 441: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 442: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 443: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 444: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 445: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 446: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 447: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 448: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 449: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 450: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 451: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 452: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 453: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 454: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 455: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 456: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 457: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 458: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 459: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 460: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 461: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 462: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 463: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 464: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 465: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 466: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 467: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 468: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 469: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 470: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 471: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 472: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 473: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 474: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 475: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 476: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 477: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 478: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 479: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 480: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 481: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 482: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 483: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 484: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 485: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 486: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 487: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 488: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 489: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 490: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 491: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 492: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 493: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 494: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 495: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 496: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 497: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 498: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 499: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 500: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 501: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 502: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 503: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 504: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 505: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 506: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 507: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 508: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 509: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 510: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 511: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 512: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 513: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 514: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 515: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 516: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 517: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 518: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 519: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 520: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 521: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 522: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 523: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 524: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 525: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 526: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 527: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 528: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 529: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 530: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 531: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 532: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 533: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 534: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 535: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 536: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 537: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 538: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 539: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 540: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 541: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 542: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 543: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 544: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 545: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 546: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 547: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 548: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 549: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 550: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 551: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 552: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 553: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 554: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 555: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 556: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 557: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 558: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 559: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 560: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 561: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 562: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 563: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 564: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 565: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 566: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 567: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 568: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 569: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 570: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 571: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 572: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 573: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 574: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 575: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 576: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 577: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 578: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 579: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 580: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 581: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 582: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 583: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 584: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 585: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 586: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 587: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 588: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 589: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 590: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 591: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 592: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 593: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 594: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 595: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 596: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 597: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 598: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 599: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 600: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 601: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 602: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 603: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 604: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 605: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 606: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 607: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 608: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 609: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 610: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 611: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 612: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 613: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 614: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 615: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 616: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 617: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 618: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 619: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 620: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 621: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 622: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 623: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 624: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 625: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 626: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 627: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 628: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 629: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 630: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 631: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 632: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 633: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 634: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 635: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 636: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 637: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 638: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 639: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 640: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 641: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 642: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 643: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 644: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 645: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 646: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 647: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 648: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 649: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Episode 650: CUDA OOM during forward pass. Skipping episode and clearing cache.
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 21, in <module>
+    main()
+  File "/root/rg_obfuscation/train.py", line 17, in main
+    shoggoth_face_train(config_path)
+  File "/root/rg_obfuscation/reinforce/shoggoth_face_trainer.py", line 145, in train
+    gen_dict = gen_engine.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/root/rg_obfuscation/shoggoth_face.py", line 114, in generate
+    shog_outputs = self.shoggoth_model.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 2625, in generate
+    result = self._sample(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 3609, in _sample
+    outputs = model_forward(**model_inputs, return_dict=True)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 570, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 458, in forward
+    layer_outputs = decoder_layer(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/modeling_layers.py", line 83, in __call__
+    return super().__call__(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 262, in forward
+    hidden_states, self_attn_weights = self.self_attn(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 201, in forward
+    query_states = self.q_norm(self.q_proj(hidden_states).view(hidden_shape)).transpose(1, 2)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 65, in forward
+    hidden_states = hidden_states * torch.rsqrt(variance + self.variance_epsilon)
+KeyboardInterrupt
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33macre_shoggoth-4[0m at: [34mhttps://wandb.ai/training-saes/qwen3-reinforce-reasongym/runs/fck1uaby[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20250712_173123-fck1uaby/logs[0m
+wandb: Currently logged in as: jacobcd52 (training-saes) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.21.0
+wandb: Run data is saved locally in /root/rg_obfuscation/wandb/run-20250712_205223-v8rjiwzm
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run acre_shoggoth-5
+wandb: ⭐️ View project at https://wandb.ai/training-saes/qwen3-reinforce-reasongym
+wandb: 🚀 View run at https://wandb.ai/training-saes/qwen3-reinforce-reasongym/runs/v8rjiwzm
+Loaded custom verifier for task 'acre' from registry
+[INFO] Loading shoggoth model: Qwen/Qwen3-4B
+[INFO] Loading face model: Qwen/Qwen3-4B
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.48it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.46it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.17it/s]
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.49it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.47it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.18it/s]
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 21, in <module>
+    main()
+  File "/root/rg_obfuscation/train.py", line 17, in main
+    shoggoth_face_train(config_path)
+  File "/root/rg_obfuscation/reinforce/shoggoth_face_trainer.py", line 145, in train
+    gen_dict = gen_engine.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/root/rg_obfuscation/shoggoth_face.py", line 114, in generate
+    shog_outputs = self.shoggoth_model.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 2625, in generate
+    result = self._sample(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 3609, in _sample
+    outputs = model_forward(**model_inputs, return_dict=True)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 570, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 458, in forward
+    layer_outputs = decoder_layer(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/modeling_layers.py", line 83, in __call__
+    return super().__call__(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 262, in forward
+    hidden_states, self_attn_weights = self.self_attn(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 206, in forward
+    query_states, key_states = apply_rotary_pos_emb(query_states, key_states, cos, sin)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 117, in apply_rotary_pos_emb
+    q_embed = (q * cos) + (rotate_half(q) * sin)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 92, in rotate_half
+    return torch.cat((-x2, x1), dim=-1)
+KeyboardInterrupt
+Exception ignored in atexit callback: <function _start_and_connect_service.<locals>.teardown_atexit at 0x727e49e35240>
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.10/dist-packages/wandb/sdk/lib/service/service_connection.py", line 54, in teardown_atexit
+    conn.teardown(hooks.exit_code)
+  File "/usr/local/lib/python3.10/dist-packages/wandb/sdk/lib/service/service_connection.py", line 182, in teardown
+    self._router.join()
+  File "/usr/local/lib/python3.10/dist-packages/wandb/sdk/interface/router.py", line 75, in join
+    self._thread.join()
+  File "/usr/lib/python3.10/threading.py", line 1096, in join
+    self._wait_for_tstate_lock()
+  File "/usr/lib/python3.10/threading.py", line 1116, in _wait_for_tstate_lock
+    if lock.acquire(block, timeout):
+KeyboardInterrupt: 
+wandb: Currently logged in as: jacobcd52 (training-saes) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.21.0
+wandb: Run data is saved locally in /root/rg_obfuscation/wandb/run-20250712_220548-q0soj7jg
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run acre_shoggoth-6
+wandb: ⭐️ View project at https://wandb.ai/training-saes/qwen3-reinforce-reasongym
+wandb: 🚀 View run at https://wandb.ai/training-saes/qwen3-reinforce-reasongym/runs/q0soj7jg
+Loaded custom verifier for task 'acre' from registry
+[INFO] Loading shoggoth model: Qwen/Qwen3-4B
+[INFO] Loading face model: Qwen/Qwen3-4B
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.47it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.45it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.16it/s]
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.48it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.46it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.17it/s]
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 21, in <module>
+    main()
+  File "/root/rg_obfuscation/train.py", line 17, in main
+    shoggoth_face_train(config_path)
+  File "/root/rg_obfuscation/reinforce/shoggoth_face_trainer.py", line 145, in train
+    gen_dict = gen_engine.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/root/rg_obfuscation/shoggoth_face.py", line 172, in generate
+    face_outputs = self.face_model.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 2625, in generate
+    result = self._sample(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 3609, in _sample
+    outputs = model_forward(**model_inputs, return_dict=True)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 570, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 458, in forward
+    layer_outputs = decoder_layer(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/modeling_layers.py", line 83, in __call__
+    return super().__call__(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 262, in forward
+    hidden_states, self_attn_weights = self.self_attn(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 217, in forward
+    attn_output, attn_weights = attention_interface(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 154, in eager_attention_forward
+    attn_output = torch.matmul(attn_weights, value_states)
+KeyboardInterrupt
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33macre_shoggoth-6[0m at: [34mhttps://wandb.ai/training-saes/qwen3-reinforce-reasongym/runs/q0soj7jg[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20250712_220548-q0soj7jg/logs[0m
