@@ -361,6 +361,10 @@ def train(config_path: str = "config.yaml") -> None:
                 optimizer.step()
                 optimizer.zero_grad()
 
+                # Explicitly clear cached GPU memory to prevent gradual accumulation
+                torch.cuda.empty_cache()
+                gc.collect()
+
                 # Aggregate metrics
                 avg_loss = accumulated_loss / len(accumulated_episodes)
                 avg_reward = sum(accumulated_rewards) / len(accumulated_rewards)
