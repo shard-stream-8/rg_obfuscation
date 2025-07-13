@@ -29,6 +29,15 @@ if ! [[ "$RUNS" =~ ^[0-9]+$ ]] || [[ "$RUNS" -le 0 ]]; then
   exit 1
 fi
 
+# Auto-detach the script unless already running in detached mode
+if [[ -z "${RUN_MANY_DETACHED:-}" ]]; then
+  LOG_FILE="run_many_$(date +%Y%m%d_%H%M%S).log"
+  echo "Detaching run_many.sh; logs will be written to ${LOG_FILE}"
+  nohup env RUN_MANY_DETACHED=1 "$0" "$@" > "${LOG_FILE}" 2>&1 &
+  echo "Background PID $!; you can safely disconnect. Tail with: tail -f ${LOG_FILE}"
+  exit 0
+fi
+
 for ((i=1; i<=RUNS; i++)); do
   echo "=== Starting run ${i}/${RUNS} with config '${CONFIG_REL}' ==="
   # nohup writes to nohup.out in the current directory (appended)
