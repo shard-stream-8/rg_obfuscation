@@ -121,7 +121,7 @@ class ShoggothFace:
             max_new_tokens=max_thinking_tokens,
             logits_processor=self.logit_processor,
             return_dict_in_generate=True,
-            output_scores=True,
+            output_scores=False,  # disable scores to save GPU memory
             **gen_kwargs,
         )
         shog_sequences = shog_outputs.sequences  # (B, prompt_len + think_len)
@@ -191,7 +191,7 @@ class ShoggothFace:
             max_new_tokens=face_max_new_tokens,
             logits_processor=answer_processors,
             return_dict_in_generate=True,
-            output_scores=True,
+            output_scores=False,  # disable scores to save GPU memory
             **gen_kwargs,
         )
         full_sequences = face_outputs.sequences  # (B, prompt+think+answer)
