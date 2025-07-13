@@ -102,3 +102,32 @@ class RolloutLogger:
                 rollouts.append(json.load(f))
                 
         return rollouts 
+
+    def compile_rollouts_to_jsonl(self, output_path: str = None) -> str:
+        """
+        Combine all per-episode rollout JSON files into a single JSONL file (one JSON
+        object per line) and return the resulting file path.
+        If ``output_path`` is not provided, the file will be created inside the
+        rollouts directory using the internal ``run_id`` timestamp for
+        disambiguation.
+        """
+        # Lazily import here to keep top-level imports minimal
+        import json as _json
+        import os as _os
+
+        if output_path is None:
+            output_path = _os.path.join(self.rollouts_dir, f"rollouts_{self.run_id}.jsonl")
+
+        # Ensure deterministic order (chronological) by sorting filenames
+        files = [f for f in _os.listdir(self.rollouts_dir) if f.endswith('.json')]
+        files.sort()
+
+        with open(output_path, 'w') as fout:
+            for fname in files:
+                fpath = _os.path.join(self.rollouts_dir, fname)
+                with open(fpath, 'r') as fin:
+                    data = _json.load(fin)
+                fout.write(_json.dumps(data))
+                fout.write('\n')
+
+        return output_path 

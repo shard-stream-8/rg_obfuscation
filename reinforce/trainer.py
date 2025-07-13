@@ -2,6 +2,7 @@ import random
 import torch
 import yaml
 import gc
+import wandb
 
 from models.qwen3 import load_qwen3_model, prepare_thinking_input
 from reinforce.logit_processor import BatchThinkingTokenBudgetProcessor
@@ -543,6 +544,13 @@ def train(config_path: str = "config.yaml") -> None:
                 continue
             else:
                 raise
+
+    # Compile all rollout JSON files into a single JSONL artifact ---------
+    compiled_rollouts_path = rollout_logger.compile_rollouts_to_jsonl()
+    artifact_name = f"rollouts-{wandb_logger.run.id}"
+    artifact = wandb.Artifact(artifact_name, type="dataset")
+    artifact.add_file(compiled_rollouts_path)
+    wandb_logger.run.log_artifact(artifact)
 
     wandb_logger.finish()
 
