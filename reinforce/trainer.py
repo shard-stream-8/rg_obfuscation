@@ -135,390 +135,414 @@ def train(config_path: str = "config.yaml") -> None:
     accumulated_episodes = []
 
     for episode in range(config.num_episodes):
-        model.eval()
-
-        # Reset processors state for new episode (if they implement reset)
-        for proc in processors:
-            if hasattr(proc, 'reset'):
-                proc.reset()
-
-        batch_indices = [random.randrange(len(task)) for _ in range(config.batch_size)]
-        batch        = [task[idx] for idx in batch_indices]
-        
-        # Apply custom prompt if available
-        if custom_prompt is not None:
-            prompts = [
-                custom_prompt(b["question"], examples=None, metadata={"task_name": config.task_name})
-                if callable(custom_prompt) else custom_prompt(b["question"])
-                for b in batch
-            ]
-        elif hasattr(config, 'prompt_template') and config.prompt_template:
-            # Fallback to the old prompt_template system
-            prompts = [
-                create_custom_prompt(
-                    original_question=b["question"],
-                    task_name=config.task_name,
-                    template=config.prompt_template
-                ) for b in batch
-            ]
-        else:
-            prompts = [b["question"] for b in batch]
-            
-        targets      = [b["answer"]   for b in batch]
-
-        prompt_inputs = [prepare_thinking_input(tokenizer, p, enable_thinking=True) for p in prompts]
-        model_inputs  = tokenizer(prompt_inputs, return_tensors="pt", padding=True).to(device)
-
-        prompt_lens = (model_inputs.input_ids != tokenizer.pad_token_id).sum(dim=1)
-
         try:
-            with torch.no_grad():
-                outputs = model.generate(
-                    **model_inputs,
-                    max_new_tokens=config.max_new_tokens,
-                    logits_processor=processors,
-                    return_dict_in_generate=True,
-                    output_scores=True,
-                )
-        except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
-            if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
-                print(f"Episode {episode}: CUDA OOM during generation. Skipping episode and clearing cache.")
-                torch.cuda.empty_cache()
-                gc.collect()
-                optimizer.zero_grad(set_to_none=True)
-                continue
-            else:
-                raise
-        generated_ids = outputs.sequences  # (B, prompt_len + gen_len)
+            model.eval()
 
-        thinking_contents, contents = [], []
-        end_think_token_id = tokenizer.encode("</think>", add_special_tokens=False)[0]
-        start_think_token_id = tokenizer.encode("<think>", add_special_tokens=False)[0]
-        
-        for seq, p_len in zip(generated_ids, prompt_lens):
-            response_ids = seq[p_len:].tolist()
+            # Reset processors state for new episode (if they implement reset)
+            for proc in processors:
+                if hasattr(proc, 'reset'):
+                    proc.reset()
+
+            batch_indices = [random.randrange(len(task)) for _ in range(config.batch_size)]
+            batch        = [task[idx] for idx in batch_indices]
             
-            # Find <think> and </think> tag positions
+            # Apply custom prompt if available
+            if custom_prompt is not None:
+                prompts = [
+                    custom_prompt(b["question"], examples=None, metadata={"task_name": config.task_name})
+                    if callable(custom_prompt) else custom_prompt(b["question"])
+                    for b in batch
+                ]
+            elif hasattr(config, 'prompt_template') and config.prompt_template:
+                # Fallback to the old prompt_template system
+                prompts = [
+                    create_custom_prompt(
+                        original_question=b["question"],
+                        task_name=config.task_name,
+                        template=config.prompt_template
+                    ) for b in batch
+                ]
+            else:
+                prompts = [b["question"] for b in batch]
+                
+            targets      = [b["answer"]   for b in batch]
+
+            prompt_inputs = [prepare_thinking_input(tokenizer, p, enable_thinking=True) for p in prompts]
+            model_inputs  = tokenizer(prompt_inputs, return_tensors="pt", padding=True).to(device)
+
+            prompt_lens = (model_inputs.input_ids != tokenizer.pad_token_id).sum(dim=1)
+
             try:
-                thinking_start = response_ids.index(start_think_token_id)
-            except ValueError:
-                thinking_start = None
-            try:
-                thinking_end = len(response_ids) - response_ids[::-1].index(end_think_token_id)
-            except ValueError:
-                thinking_end = None
-            
-            if thinking_start is not None:
-                if thinking_end is not None and thinking_end > thinking_start:
-                    # Both tags present and in order
-                    thinking_ids = response_ids[thinking_start + 1:thinking_end - 1]  # exclude <think> and </think>
-                    content_ids = response_ids[thinking_end:]
-                    thinking = tokenizer.decode(thinking_ids, skip_special_tokens=True).strip()
-                    answer = tokenizer.decode(content_ids, skip_special_tokens=True).strip()
+                with torch.no_grad():
+                    outputs = model.generate(
+                        **model_inputs,
+                        max_new_tokens=config.max_new_tokens,
+                        logits_processor=processors,
+                        return_dict_in_generate=True,
+                        output_scores=True,
+                    )
+            except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
+                if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
+                    print(f"Episode {episode}: CUDA OOM during generation. Skipping episode and clearing cache.")
+                    torch.cuda.empty_cache()
+                    gc.collect()
+                    optimizer.zero_grad(set_to_none=True)
+                    continue
                 else:
-                    # Only <think> present, no </think>
-                    thinking_ids = response_ids[thinking_start + 1:]
-                    thinking = tokenizer.decode(thinking_ids, skip_special_tokens=True).strip()
-                    answer = ""
-            else:
-                # No <think> tag, treat all as answer
-                thinking = ""
-                answer = tokenizer.decode(response_ids, skip_special_tokens=True).strip()
-            
-            # Clean up any prompt template fragments that might have leaked through
-            prompt_fragments = [
-                "Write in as much detail as is useful inside think tags, but give only a brief explanation in your final output.",
-                "assistant",
-                "user:",
-                "assistant:"
-            ]
-            for fragment in prompt_fragments:
-                thinking = thinking.replace(fragment, "").strip()
-                answer = answer.replace(fragment, "").strip()
-            thinking_contents.append(thinking)
-            contents.append(answer)
+                    raise
+            generated_ids = outputs.sequences  # (B, prompt_len + gen_len)
 
-        # Calculate rewards and penalties separately
-        base_rewards = []
-        penalties = []
-        thinking_penalties = []
-        penalized_rewards = []
-        # For logging individual word penalties
-        output_word_penalties = []
-        thinking_word_penalties = []
-        # For logging raw word counts
-        output_word_counts = []
-        thinking_word_counts = []
-        
-        for b, c, thinking_c in zip(batch, contents, thinking_contents):
-            # Get the verifier to calculate base reward and penalty separately
-            if hasattr(task, 'score_answer') and hasattr(task.score_answer, 'calculate_word_penalty'):
-                verifier = task.score_answer
-                base_reward = verifier.verify(c, b)
-                penalty = verifier.calculate_word_penalty(c)
+            thinking_contents, contents = [], []
+            end_think_token_id = tokenizer.encode("</think>", add_special_tokens=False)[0]
+            start_think_token_id = tokenizer.encode("<think>", add_special_tokens=False)[0]
+            
+            for seq, p_len in zip(generated_ids, prompt_lens):
+                response_ids = seq[p_len:].tolist()
                 
-                # Calculate penalties for logging (even when disabled)
-                output_penalty_for_logging = 0.0
-                thinking_penalty_for_logging = 0.0
-                output_word_penalties_dict = {}
-                thinking_word_penalties_dict = {}
-                output_word_counts_dict = {}
-                thinking_word_counts_dict = {}
+                # Find <think> and </think> tag positions
+                try:
+                    thinking_start = response_ids.index(start_think_token_id)
+                except ValueError:
+                    thinking_start = None
+                try:
+                    thinking_end = len(response_ids) - response_ids[::-1].index(end_think_token_id)
+                except ValueError:
+                    thinking_end = None
                 
-                if hasattr(verifier, 'calculate_word_penalty_for_logging'):
-                    output_penalty_for_logging = verifier.calculate_word_penalty_for_logging(c)
-                if hasattr(verifier, 'calculate_thinking_penalty_for_logging'):
-                    thinking_penalty_for_logging = verifier.calculate_thinking_penalty_for_logging(thinking_c)
-                if hasattr(verifier, 'calculate_individual_word_penalties'):
-                    output_word_penalties_dict = verifier.calculate_individual_word_penalties(c)
-                if hasattr(verifier, 'calculate_individual_thinking_word_penalties'):
-                    thinking_word_penalties_dict = verifier.calculate_individual_thinking_word_penalties(thinking_c)
-                if hasattr(verifier, 'calculate_raw_word_counts'):
-                    output_word_counts_dict = verifier.calculate_raw_word_counts(c)
-                if hasattr(verifier, 'calculate_raw_thinking_word_counts'):
-                    thinking_word_counts_dict = verifier.calculate_raw_thinking_word_counts(thinking_c)
+                if thinking_start is not None:
+                    if thinking_end is not None and thinking_end > thinking_start:
+                        # Both tags present and in order
+                        thinking_ids = response_ids[thinking_start + 1:thinking_end - 1]  # exclude <think> and </think>
+                        content_ids = response_ids[thinking_end:]
+                        thinking = tokenizer.decode(thinking_ids, skip_special_tokens=True).strip()
+                        answer = tokenizer.decode(content_ids, skip_special_tokens=True).strip()
+                    else:
+                        # Only <think> present, no </think>
+                        thinking_ids = response_ids[thinking_start + 1:]
+                        thinking = tokenizer.decode(thinking_ids, skip_special_tokens=True).strip()
+                        answer = ""
+                else:
+                    # No <think> tag, treat all as answer
+                    thinking = ""
+                    answer = tokenizer.decode(response_ids, skip_special_tokens=True).strip()
                 
-                penalized_reward = base_reward - penalty
-            else:
-                base_reward = task.score_answer(c, b)
-                penalty = 0.0
-                thinking_penalty_for_logging = 0.0
-                output_penalty_for_logging = 0.0
-                output_word_penalties_dict = {}
-                thinking_word_penalties_dict = {}
-                output_word_counts_dict = {}
-                thinking_word_counts_dict = {}
-                penalized_reward = base_reward
+                # Clean up any prompt template fragments that might have leaked through
+                prompt_fragments = [
+                    "Write in as much detail as is useful inside think tags, but give only a brief explanation in your final output.",
+                    "assistant",
+                    "user:",
+                    "assistant:"
+                ]
+                for fragment in prompt_fragments:
+                    thinking = thinking.replace(fragment, "").strip()
+                    answer = answer.replace(fragment, "").strip()
+                thinking_contents.append(thinking)
+                contents.append(answer)
+
+            # Calculate rewards and penalties separately
+            base_rewards = []
+            penalties = []
+            thinking_penalties = []
+            penalized_rewards = []
+            # For logging individual word penalties
+            output_word_penalties = []
+            thinking_word_penalties = []
+            # For logging raw word counts
+            output_word_counts = []
+            thinking_word_counts = []
             
-            base_rewards.append(base_reward)
-            penalties.append(penalty)
-            thinking_penalties.append(thinking_penalty_for_logging)
-            penalized_rewards.append(penalized_reward)
-            output_word_penalties.append(output_word_penalties_dict)
-            thinking_word_penalties.append(thinking_word_penalties_dict)
-            output_word_counts.append(output_word_counts_dict)
-            thinking_word_counts.append(thinking_word_counts_dict)
-        
-        # Convert to tensors
-        base_rewards = torch.tensor(base_rewards, dtype=torch.float32, device=device)
-        penalties = torch.tensor(penalties, dtype=torch.float32, device=device)
-        thinking_penalties = torch.tensor(thinking_penalties, dtype=torch.float32, device=device)
-        rewards = torch.tensor(penalized_rewards, dtype=torch.float32, device=device)  # Use penalized rewards for training
-
-        model.train()
-        
-        # Only zero gradients on the first accumulation step
-        if (episode % gradient_accumulation_steps) == 0:
-            optimizer.zero_grad()
-
-        # Build a tensor of prompt + generated tokens for every example ----
-        full_ids_list, start_indices = [], []
-        for prompt_ids, seq in zip(model_inputs.input_ids, generated_ids):
-            p_len = prompt_ids.size(0)
-            start_indices.append(p_len - 1)  # -1 because targets are shifted by 1
-            full_ids_list.append(seq)        # seq already contains prompt+gen
-        full_ids = torch.nn.utils.rnn.pad_sequence(
-            full_ids_list,
-            batch_first=True,
-            padding_value=tokenizer.pad_token_id,
-        )
-        full_ids = full_ids.to(device)
-
-        # Forward pass through the policy network -------------------------
-        try:
-            logits = model(full_ids).logits  # (B, T, V)
-        except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
-            if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
-                print(f"Episode {episode}: CUDA OOM during forward pass. Skipping episode and clearing cache.")
-                torch.cuda.empty_cache()
-                gc.collect()
-                optimizer.zero_grad(set_to_none=True)
-                continue
-            else:
-                raise
-
-        # Compute log‑probs for each *next* token -------------------------
-        policy_log_probs = torch.log_softmax(logits[:, :-1], dim=-1)  # predict t+1
-        target_tokens    = full_ids[:, 1:]
-        logp_taken       = policy_log_probs.gather(-1, target_tokens.unsqueeze(-1)).squeeze(-1)  # (B, T-1)
-
-        # Build a mask that is 1 for response tokens, 0 elsewhere ----------
-        seq_len   = full_ids.size(1) - 1  # -1 because of the shift
-        arange    = torch.arange(seq_len, device=device).unsqueeze(0)  # (1, T-1)
-        start_idx = torch.tensor(start_indices, device=device).unsqueeze(1)
-        mask      = arange >= start_idx  # (B, T-1)
-
-        # Average log‑prob over the response positions --------------------
-        logp_per_seq = (logp_taken * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-8)
-
-        # Always compute KL penalty for logging purposes
-        with torch.no_grad():
-            ref_logits = ref_model(full_ids).logits[:, :-1]
-        ref_log_probs = torch.log_softmax(ref_logits, dim=-1)
-        kl_token = torch.nn.functional.kl_div(
-            policy_log_probs,
-            ref_log_probs.exp(),
-            reduction="none",
-        ).sum(-1)  # (B, T-1)
-        kl_penalty = (kl_token * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-8)
-
-        baseline  = rewards.mean().detach()
-        advantage = rewards - baseline
-
-        # Scale loss by gradient accumulation steps to maintain the same effective learning rate
-        # Only apply KL penalty to loss if coefficient > 0
-        loss = -((advantage - config.kl_coefficient * kl_penalty.detach()) * logp_per_seq).mean() / gradient_accumulation_steps
-        try:
-            loss.backward()
-        except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
-            if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
-                print(f"Episode {episode}: CUDA OOM during backward pass. Skipping episode and clearing cache.")
-                torch.cuda.empty_cache()
-                gc.collect()
-                optimizer.zero_grad(set_to_none=True)
-                continue
-            else:
-                raise
-
-        # Store metrics for logging
-        accumulated_loss += loss.item() * gradient_accumulation_steps  # Scale back for logging
-        accumulated_rewards.extend(rewards.tolist())
-        accumulated_base_rewards.extend(base_rewards.tolist())
-        accumulated_penalties.extend(penalties.tolist())
-        accumulated_thinking_penalties.extend(thinking_penalties.tolist())
-        accumulated_advantages.extend(advantage.tolist())
-        accumulated_kl_penalties.extend(kl_penalty.tolist())
-        accumulated_episodes.append({
-            'episode': episode,
-            'prompts': prompts,
-            'targets': targets,
-            'thinking_contents': thinking_contents,
-            'contents': contents,
-            'rewards': rewards.tolist(),
-            'base_rewards': base_rewards.tolist(),
-            'penalties': penalties.tolist(),
-            'thinking_penalties': thinking_penalties.tolist(),
-            'output_word_penalties': output_word_penalties,
-            'thinking_word_penalties': thinking_word_penalties,
-            'output_word_counts': output_word_counts,
-            'thinking_word_counts': thinking_word_counts,
-            'loss': loss.item() * gradient_accumulation_steps,  # Scale back for logging
-            'kl_penalty_mean': kl_penalty.mean().item(),
-        })
-
-        # Perform optimizer step and logging at the end of accumulation
-        if (episode + 1) % gradient_accumulation_steps == 0 or episode == config.num_episodes - 1:
-            # Optional: gradient clipping (helps with exploding variance)
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-
-            # Zero out special‑token gradients so they stay fixed -------------
-            zero_special_token_grads(model, tokenizer)
-            optimizer.step()
-
-            # Log accumulated metrics
-            avg_loss = accumulated_loss / len(accumulated_episodes) if accumulated_episodes else 0.0
-            avg_reward = sum(accumulated_rewards) / len(accumulated_rewards) if accumulated_rewards else 0.0
-            avg_base_reward = sum(accumulated_base_rewards) / len(accumulated_base_rewards) if accumulated_base_rewards else 0.0
-            avg_penalty = sum(accumulated_penalties) / len(accumulated_penalties) if accumulated_penalties else 0.0
-            avg_thinking_penalty = sum(accumulated_thinking_penalties) / len(accumulated_thinking_penalties) if accumulated_thinking_penalties else 0.0
-            avg_advantage = sum(accumulated_advantages) / len(accumulated_advantages) if accumulated_advantages else 0.0
-            avg_kl_penalty = sum(accumulated_kl_penalties) / len(accumulated_kl_penalties) if accumulated_kl_penalties else 0.0
-            avg_gen_tokens = float(mask.sum().item() / config.batch_size)
+            for b, c, thinking_c in zip(batch, contents, thinking_contents):
+                # Get the verifier to calculate base reward and penalty separately
+                if hasattr(task, 'score_answer') and hasattr(task.score_answer, 'calculate_word_penalty'):
+                    verifier = task.score_answer
+                    base_reward = verifier.verify(c, b)
+                    penalty = verifier.calculate_word_penalty(c)
+                    
+                    # Calculate penalties for logging (even when disabled)
+                    output_penalty_for_logging = 0.0
+                    thinking_penalty_for_logging = 0.0
+                    output_word_penalties_dict = {}
+                    thinking_word_penalties_dict = {}
+                    output_word_counts_dict = {}
+                    thinking_word_counts_dict = {}
+                    
+                    if hasattr(verifier, 'calculate_word_penalty_for_logging'):
+                        output_penalty_for_logging = verifier.calculate_word_penalty_for_logging(c)
+                    if hasattr(verifier, 'calculate_thinking_penalty_for_logging'):
+                        thinking_penalty_for_logging = verifier.calculate_thinking_penalty_for_logging(thinking_c)
+                    if hasattr(verifier, 'calculate_individual_word_penalties'):
+                        output_word_penalties_dict = verifier.calculate_individual_word_penalties(c)
+                    if hasattr(verifier, 'calculate_individual_thinking_word_penalties'):
+                        thinking_word_penalties_dict = verifier.calculate_individual_thinking_word_penalties(thinking_c)
+                    if hasattr(verifier, 'calculate_raw_word_counts'):
+                        output_word_counts_dict = verifier.calculate_raw_word_counts(c)
+                    if hasattr(verifier, 'calculate_raw_thinking_word_counts'):
+                        thinking_word_counts_dict = verifier.calculate_raw_thinking_word_counts(thinking_c)
+                    
+                    penalized_reward = base_reward - penalty
+                else:
+                    base_reward = task.score_answer(c, b)
+                    penalty = 0.0
+                    thinking_penalty_for_logging = 0.0
+                    output_penalty_for_logging = 0.0
+                    output_word_penalties_dict = {}
+                    thinking_word_penalties_dict = {}
+                    output_word_counts_dict = {}
+                    thinking_word_counts_dict = {}
+                    penalized_reward = base_reward
+                
+                base_rewards.append(base_reward)
+                penalties.append(penalty)
+                thinking_penalties.append(thinking_penalty_for_logging)
+                penalized_rewards.append(penalized_reward)
+                output_word_penalties.append(output_word_penalties_dict)
+                thinking_word_penalties.append(thinking_word_penalties_dict)
+                output_word_counts.append(output_word_counts_dict)
+                thinking_word_counts.append(thinking_word_counts_dict)
             
-            # Calculate individual word penalty averages for logging
-            all_output_word_penalties = {}
-            all_thinking_word_penalties = {}
-            all_output_word_counts = {}
-            all_thinking_word_counts = {}
-            for ep in accumulated_episodes:
-                for word_penalties in ep['output_word_penalties']:
-                    for word, penalty in word_penalties.items():
-                        if word not in all_output_word_penalties:
-                            all_output_word_penalties[word] = []
-                        all_output_word_penalties[word].append(penalty)
-                for word_penalties in ep['thinking_word_penalties']:
-                    for word, penalty in word_penalties.items():
-                        if word not in all_thinking_word_penalties:
-                            all_thinking_word_penalties[word] = []
-                        all_thinking_word_penalties[word].append(penalty)
-                for word_counts in ep['output_word_counts']:
-                    for word, count in word_counts.items():
-                        if word not in all_output_word_counts:
-                            all_output_word_counts[word] = []
-                        all_output_word_counts[word].append(count)
-                for word_counts in ep['thinking_word_counts']:
-                    for word, count in word_counts.items():
-                        if word not in all_thinking_word_counts:
-                            all_thinking_word_counts[word] = []
-                        all_thinking_word_counts[word].append(count)
+            # Convert to tensors
+            base_rewards = torch.tensor(base_rewards, dtype=torch.float32, device=device)
+            penalties = torch.tensor(penalties, dtype=torch.float32, device=device)
+            thinking_penalties = torch.tensor(thinking_penalties, dtype=torch.float32, device=device)
+            rewards = torch.tensor(penalized_rewards, dtype=torch.float32, device=device)  # Use penalized rewards for training
+
+            model.train()
             
-            # Calculate averages for each word
-            avg_output_word_penalties = {}
-            avg_thinking_word_penalties = {}
-            avg_output_word_counts = {}
-            avg_thinking_word_counts = {}
-            for word, penalties in all_output_word_penalties.items():
-                avg_output_word_penalties[f"output_penalty_{word}"] = sum(penalties) / len(penalties)
-            for word, penalties in all_thinking_word_penalties.items():
-                avg_thinking_word_penalties[f"thinking_penalty_{word}"] = sum(penalties) / len(penalties)
-            for word, counts in all_output_word_counts.items():
-                avg_output_word_counts[f"output_count_{word}"] = sum(counts) / len(counts)
-            for word, counts in all_thinking_word_counts.items():
-                avg_thinking_word_counts[f"thinking_count_{word}"] = sum(counts) / len(counts)
-            
-            # Calculate total counts across all words
-            total_output_words = sum(sum(counts) for counts in all_output_word_counts.values())
-            total_thinking_words = sum(sum(counts) for counts in all_thinking_word_counts.values())
-            
-            wandb_logger.log(
-                {
-                    "loss": avg_loss,
-                    "reward_mean": avg_base_reward,  # Base task reward (before penalty)
-                    "penalized_reward": avg_reward,  # Final reward (after penalty)
-                    "penalty": avg_penalty,  # Just the penalty amount
-                    "thinking_penalty_mean": avg_thinking_penalty,
-                    "advantage_mean": avg_advantage,
-                    "kl_penalty_mean": avg_kl_penalty,
-                    "kl_penalty_scaled": (config.kl_coefficient * avg_kl_penalty),
-                    "avg_gen_tokens": avg_gen_tokens,
-                    "gradient_accumulation_step": episode // gradient_accumulation_steps,
-                    "total_output_penalized_words": total_output_words,
-                    "total_thinking_penalized_words": total_thinking_words,
-                    **avg_output_word_penalties,
-                    **avg_thinking_word_penalties,
-                    **avg_output_word_counts,
-                    **avg_thinking_word_counts,
-                },
-                step=episode,
+            # Only zero gradients on the first accumulation step
+            if (episode % gradient_accumulation_steps) == 0:
+                optimizer.zero_grad()
+
+            # Build a tensor of prompt + generated tokens for every example ----
+            full_ids_list, start_indices = [], []
+            for prompt_ids, seq in zip(model_inputs.input_ids, generated_ids):
+                p_len = prompt_ids.size(0)
+                start_indices.append(p_len - 1)  # -1 because targets are shifted by 1
+                full_ids_list.append(seq)        # seq already contains prompt+gen
+            full_ids = torch.nn.utils.rnn.pad_sequence(
+                full_ids_list,
+                batch_first=True,
+                padding_value=tokenizer.pad_token_id,
             )
+            full_ids = full_ids.to(device)
 
-            # Log rollouts for each episode in the accumulation
-            for episode_data in accumulated_episodes:
-                rollout_logger.log_rollout(
-                    episode=episode_data['episode'],
-                    prompts=episode_data['prompts'],
-                    targets=episode_data['targets'],
-                    thinking_contents=episode_data['thinking_contents'],
-                    contents=episode_data['contents'],
-                    rewards=episode_data['rewards'],
-                    loss=episode_data['loss'],
-                    thinking_penalties=episode_data['thinking_penalties'],
-                    output_word_penalties=episode_data['output_word_penalties'],
-                    thinking_word_penalties=episode_data['thinking_word_penalties'],
-                    output_word_counts=episode_data['output_word_counts'],
-                    thinking_word_counts=episode_data['thinking_word_counts'],
-                    kl_penalty_mean=episode_data['kl_penalty_mean'],
+            # Forward pass through the policy network -------------------------
+            try:
+                logits = model(full_ids).logits  # (B, T, V)
+            except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
+                if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
+                    print(f"Episode {episode}: CUDA OOM during forward pass. Skipping episode and clearing cache.")
+                    for _var in ['full_ids', 'logits']:
+                        if _var in locals():
+                            del locals()[_var]
+                    optimizer.zero_grad(set_to_none=True)
+                    torch.cuda.empty_cache()
+                    gc.collect()
+                    continue
+                else:
+                    raise
+
+            # Compute log‑probs for each *next* token -------------------------
+            policy_log_probs = torch.log_softmax(logits[:, :-1], dim=-1)  # predict t+1
+            target_tokens    = full_ids[:, 1:]
+            logp_taken       = policy_log_probs.gather(-1, target_tokens.unsqueeze(-1)).squeeze(-1)  # (B, T-1)
+
+            # Build a mask that is 1 for response tokens, 0 elsewhere ----------
+            seq_len   = full_ids.size(1) - 1  # -1 because of the shift
+            arange    = torch.arange(seq_len, device=device).unsqueeze(0)  # (1, T-1)
+            start_idx = torch.tensor(start_indices, device=device).unsqueeze(1)
+            mask      = arange >= start_idx  # (B, T-1)
+
+            # Average log‑prob over the response positions --------------------
+            logp_per_seq = (logp_taken * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-8)
+
+            # Always compute KL penalty for logging purposes
+            with torch.no_grad():
+                ref_logits = ref_model(full_ids).logits[:, :-1]
+            ref_log_probs = torch.log_softmax(ref_logits, dim=-1)
+            kl_token = torch.nn.functional.kl_div(
+                policy_log_probs,
+                ref_log_probs.exp(),
+                reduction="none",
+            ).sum(-1)  # (B, T-1)
+            kl_penalty = (kl_token * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-8)
+
+            baseline  = rewards.mean().detach()
+            advantage = rewards - baseline
+
+            # Scale loss by gradient accumulation steps to maintain the same effective learning rate
+            # Only apply KL penalty to loss if coefficient > 0
+            loss = -((advantage - config.kl_coefficient * kl_penalty.detach()) * logp_per_seq).mean() / gradient_accumulation_steps
+            try:
+                loss.backward()
+            except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
+                if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
+                    print(f"Episode {episode}: CUDA OOM during backward pass. Skipping episode and clearing cache.")
+                    if 'loss' in locals():
+                        del loss
+                    optimizer.zero_grad(set_to_none=True)
+                    torch.cuda.empty_cache()
+                    gc.collect()
+                    continue
+                else:
+                    raise
+
+            # Store metrics for logging
+            accumulated_loss += loss.item() * gradient_accumulation_steps  # Scale back for logging
+            accumulated_rewards.extend(rewards.tolist())
+            accumulated_base_rewards.extend(base_rewards.tolist())
+            accumulated_penalties.extend(penalties.tolist())
+            accumulated_thinking_penalties.extend(thinking_penalties.tolist())
+            accumulated_advantages.extend(advantage.tolist())
+            accumulated_kl_penalties.extend(kl_penalty.tolist())
+            accumulated_episodes.append({
+                'episode': episode,
+                'prompts': prompts,
+                'targets': targets,
+                'thinking_contents': thinking_contents,
+                'contents': contents,
+                'rewards': rewards.tolist(),
+                'base_rewards': base_rewards.tolist(),
+                'penalties': penalties.tolist(),
+                'thinking_penalties': thinking_penalties.tolist(),
+                'output_word_penalties': output_word_penalties,
+                'thinking_word_penalties': thinking_word_penalties,
+                'output_word_counts': output_word_counts,
+                'thinking_word_counts': thinking_word_counts,
+                'loss': loss.item() * gradient_accumulation_steps,  # Scale back for logging
+                'kl_penalty_mean': kl_penalty.mean().item(),
+            })
+
+            # Perform optimizer step and logging at the end of accumulation
+            if (episode + 1) % gradient_accumulation_steps == 0 or episode == config.num_episodes - 1:
+                # Optional: gradient clipping (helps with exploding variance)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+
+                # Zero out special‑token gradients so they stay fixed -------------
+                zero_special_token_grads(model, tokenizer)
+                optimizer.step()
+
+                # Log accumulated metrics
+                avg_loss = accumulated_loss / len(accumulated_episodes) if accumulated_episodes else 0.0
+                avg_reward = sum(accumulated_rewards) / len(accumulated_rewards) if accumulated_rewards else 0.0
+                avg_base_reward = sum(accumulated_base_rewards) / len(accumulated_base_rewards) if accumulated_base_rewards else 0.0
+                avg_penalty = sum(accumulated_penalties) / len(accumulated_penalties) if accumulated_penalties else 0.0
+                avg_thinking_penalty = sum(accumulated_thinking_penalties) / len(accumulated_thinking_penalties) if accumulated_thinking_penalties else 0.0
+                avg_advantage = sum(accumulated_advantages) / len(accumulated_advantages) if accumulated_advantages else 0.0
+                avg_kl_penalty = sum(accumulated_kl_penalties) / len(accumulated_kl_penalties) if accumulated_kl_penalties else 0.0
+                avg_gen_tokens = float(mask.sum().item() / config.batch_size)
+                
+                # Calculate individual word penalty averages for logging
+                all_output_word_penalties = {}
+                all_thinking_word_penalties = {}
+                all_output_word_counts = {}
+                all_thinking_word_counts = {}
+                for ep in accumulated_episodes:
+                    for word_penalties in ep['output_word_penalties']:
+                        for word, penalty in word_penalties.items():
+                            if word not in all_output_word_penalties:
+                                all_output_word_penalties[word] = []
+                            all_output_word_penalties[word].append(penalty)
+                    for word_penalties in ep['thinking_word_penalties']:
+                        for word, penalty in word_penalties.items():
+                            if word not in all_thinking_word_penalties:
+                                all_thinking_word_penalties[word] = []
+                            all_thinking_word_penalties[word].append(penalty)
+                    for word_counts in ep['output_word_counts']:
+                        for word, count in word_counts.items():
+                            if word not in all_output_word_counts:
+                                all_output_word_counts[word] = []
+                            all_output_word_counts[word].append(count)
+                    for word_counts in ep['thinking_word_counts']:
+                        for word, count in word_counts.items():
+                            if word not in all_thinking_word_counts:
+                                all_thinking_word_counts[word] = []
+                            all_thinking_word_counts[word].append(count)
+                
+                # Calculate averages for each word
+                avg_output_word_penalties = {}
+                avg_thinking_word_penalties = {}
+                avg_output_word_counts = {}
+                avg_thinking_word_counts = {}
+                for word, penalties in all_output_word_penalties.items():
+                    avg_output_word_penalties[f"output_penalty_{word}"] = sum(penalties) / len(penalties)
+                for word, penalties in all_thinking_word_penalties.items():
+                    avg_thinking_word_penalties[f"thinking_penalty_{word}"] = sum(penalties) / len(penalties)
+                for word, counts in all_output_word_counts.items():
+                    avg_output_word_counts[f"output_count_{word}"] = sum(counts) / len(counts)
+                for word, counts in all_thinking_word_counts.items():
+                    avg_thinking_word_counts[f"thinking_count_{word}"] = sum(counts) / len(counts)
+                
+                # Calculate total counts across all words
+                total_output_words = sum(sum(counts) for counts in all_output_word_counts.values())
+                total_thinking_words = sum(sum(counts) for counts in all_thinking_word_counts.values())
+                
+                wandb_logger.log(
+                    {
+                        "loss": avg_loss,
+                        "reward_mean": avg_base_reward,  # Base task reward (before penalty)
+                        "penalized_reward": avg_reward,  # Final reward (after penalty)
+                        "penalty": avg_penalty,  # Just the penalty amount
+                        "thinking_penalty_mean": avg_thinking_penalty,
+                        "advantage_mean": avg_advantage,
+                        "kl_penalty_mean": avg_kl_penalty,
+                        "kl_penalty_scaled": (config.kl_coefficient * avg_kl_penalty),
+                        "avg_gen_tokens": avg_gen_tokens,
+                        "gradient_accumulation_step": episode // gradient_accumulation_steps,
+                        "total_output_penalized_words": total_output_words,
+                        "total_thinking_penalized_words": total_thinking_words,
+                        **avg_output_word_penalties,
+                        **avg_thinking_word_penalties,
+                        **avg_output_word_counts,
+                        **avg_thinking_word_counts,
+                    },
+                    step=episode,
                 )
 
-            # Reset accumulation variables
-            accumulated_loss = 0.0
-            accumulated_rewards = []
-            accumulated_base_rewards = []
-            accumulated_penalties = []
-            accumulated_thinking_penalties = []
-            accumulated_advantages = []
-            accumulated_kl_penalties = []
-            accumulated_episodes = []
+                # Log rollouts for each episode in the accumulation
+                for episode_data in accumulated_episodes:
+                    rollout_logger.log_rollout(
+                        episode=episode_data['episode'],
+                        prompts=episode_data['prompts'],
+                        targets=episode_data['targets'],
+                        thinking_contents=episode_data['thinking_contents'],
+                        contents=episode_data['contents'],
+                        rewards=episode_data['rewards'],
+                        loss=episode_data['loss'],
+                        thinking_penalties=episode_data['thinking_penalties'],
+                        output_word_penalties=episode_data['output_word_penalties'],
+                        thinking_word_penalties=episode_data['thinking_word_penalties'],
+                        output_word_counts=episode_data['output_word_counts'],
+                        thinking_word_counts=episode_data['thinking_word_counts'],
+                        kl_penalty_mean=episode_data['kl_penalty_mean'],
+                    )
+
+                # Reset accumulation variables
+                accumulated_loss = 0.0
+                accumulated_rewards = []
+                accumulated_base_rewards = []
+                accumulated_penalties = []
+                accumulated_thinking_penalties = []
+                accumulated_advantages = []
+                accumulated_kl_penalties = []
+                accumulated_episodes = []
+
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
+            if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
+                print(f"Episode {episode}: CUDA OOM (unhandled block). Skipping episode and clearing cache.")
+                optimizer.zero_grad(set_to_none=True)
+                torch.cuda.empty_cache()
+                gc.collect()
+                accumulated_loss = 0.0
+                accumulated_rewards = []
+                accumulated_base_rewards = []
+                accumulated_penalties = []
+                accumulated_thinking_penalties = []
+                accumulated_advantages = []
+                accumulated_kl_penalties = []
+                accumulated_episodes = []
+                continue
+            else:
+                raise
 
     wandb_logger.finish()
 
