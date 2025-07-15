@@ -1,24 +1,24 @@
 # model
 model_name: "Qwen/Qwen3-4B"
-shoggoth_name: null
+shoggoth_name: "Qwen/Qwen3-4B"
 
 # reasoning gym
 task_name: "acre"
-task_name_for_wandb: "acre"
+task_name_for_wandb: "acre_shoggoth"
 custom_verifier_path: "registry" # "registry" automatically finds the custom verifier in /verifiers for the selected task
 custom_prompt_path: "registry" # "registry" automatically finds the custom prompt in /prompts for the selected task
 
 # training
-batch_size: 4
-gradient_accumulation_steps: 4
+batch_size: 2
+gradient_accumulation_steps: 16
 learning_rate: 1e-5
-weight_decay: 1e-3
-num_episodes: 400
+weight_decay: 1e-2
+num_episodes: 300
 kl_coefficient: 0.0
 min_thinking_tokens: 10
-max_thinking_tokens: 200
+max_thinking_tokens: 300
 min_output_tokens: 10
-max_new_tokens: 300
+max_new_tokens: 400
 temperature: 1.0
 seed: 42
 device: "cuda"

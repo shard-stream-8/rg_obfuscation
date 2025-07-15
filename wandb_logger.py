@@ -16,22 +16,29 @@ def get_next_run_number_wandb_api(task_name, project, entity=None):
     project_path = f"{entity}/{project}" if entity else project
     try:
         runs = api.runs(project_path)
-    except CommError:
+        max_num = 0
+        prefix = f"{task_name}-"
+        for run in runs:
+            name = run.name or ""
+            if name.startswith(prefix):
+                try:
+                    num = int(name[len(prefix):])
+                    if num > max_num:
+                        max_num = num
+                except ValueError:
+                    continue
+        return max_num + 1
+    except (CommError, ValueError):
         # If the project doesn't exist yet, create it and return 1 as the first run number
-        api.create_project(name=project, entity=entity)
+        try:
+            if entity:
+                api.create_project(name=project, entity=entity)
+            else:
+                api.create_project(name=project)
+        except Exception as e:
+            print(f"Failed to create project {project}: {e}")
+            # If we can't create the project, still return 1 as the first run number
         return 1
-    max_num = 0
-    prefix = f"{task_name}-"
-    for run in runs:
-        name = run.name or ""
-        if name.startswith(prefix):
-            try:
-                num = int(name[len(prefix):])
-                if num > max_num:
-                    max_num = num
-            except ValueError:
-                continue
-    return max_num + 1
 
 class WandbLogger:
     def __init__(self, config):

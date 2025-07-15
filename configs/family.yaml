@@ -1,8 +1,10 @@
 # model
 model_name: "Qwen/Qwen3-4B"
+shoggoth_name: null
 
 # reasoning gym
 task_name: "family_relationships"
+task_name_for_wandb: "penalty"
 custom_verifier_path: "registry" # "registry" automatically finds the custom verifier in /verifiers for the selected task
 custom_prompt_path: "registry" # "registry" automatically finds the custom prompt in /prompts for the selected task
 
@@ -10,11 +12,14 @@ custom_prompt_path: "registry" # "registry" automatically finds the custom promp
 batch_size: 4
 gradient_accumulation_steps: 4
 learning_rate: 1e-5
+weight_decay: 1e-2
 num_episodes: 1000
 kl_coefficient: 0.0
-min_thinking_tokens: 0
-max_thinking_tokens: 128
-max_new_tokens: 256
+min_thinking_tokens: 10
+max_thinking_tokens: 300
+min_output_tokens: 10
+max_new_tokens: 400
+temperature: 1.0
 seed: 42
 device: "cuda"
 
@@ -22,11 +27,11 @@ device: "cuda"
 word_penalty:
   enabled: true
   words: ["married"]
-  penalty_per_word: 0.
-  max_penalty: 1.5
+  penalty_per_word: 0.5
+  max_penalty: 2
 
 # wandb
-wandb_project: "qwen3-reinforce-reasongym"
+wandb_project: "family_rel"
 wandb_entity: null
 # Optional Hugging Face repo to push the trained model (or LoRA adapters)
-hf_repo_out: jacobcd52/qwen3_4b_family_relationships_married_penalty0
+hf_repo_out: null
