@@ -1,5 +1,2 @@
-# Family configuration - inherits from base.yaml
-# Override only the values that differ from base config
-
 # task configuration
 task_name: "family_relationships" 

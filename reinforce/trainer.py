@@ -402,12 +402,172 @@ def run_multi_turn_episode(model: Any, tokenizer: Any, task: Any, initial_prompt
         'terminal_context': episode_state.get('terminal_context', '')
     }
 
+def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initial_prompts: List[str],
+                                   logit_processor: Any, config: Config, device: str, ground_truths: List[Any]) -> List[Dict[str, Any]]:
+    """
+    Run multiple multi-turn episodes in parallel (batched by turn).
+    
+    Args:
+        model: The model to use for generation
+        tokenizer: The tokenizer
+        task: The task instance
+        initial_prompts: List of initial prompts for each episode
+        logit_processor: The logit processor
+        config: Configuration object
+        device: Device to run on
+        ground_truths: List of ground truth data for each episode
+        
+    Returns:
+        List of episode results
+    """
+    batch_size = len(initial_prompts)
+    max_turns = getattr(config, 'max_turns', 10)
+    
+    # Initialize episode states for all episodes
+    episode_states = [task.create_episode_state() for _ in range(batch_size)]
+    episode_results = [{
+        'episode_rewards': [],
+        'episode_commands': [],
+        'episode_outputs': [],
+        'episode_thinking_contents': [],
+        'episode_contents': [],
+        'conversation_dialogue': [{"role": "human", "content": prompt}],
+        'final_reward': 0.0,
+        'episode_complete': False,
+        'turn_count': 0,
+        'terminal_context': ''
+    } for prompt in initial_prompts]
+    
+    # Track which episodes are still active
+    active_episodes = list(range(batch_size))
+    
+    for turn in range(max_turns):
+        if not active_episodes:
+            break
+            
+        logit_processor.reset()
+        
+        # Prepare prompts for active episodes
+        active_prompts = []
+        active_indices = []
+        
+        for episode_idx in active_episodes:
+            episode_result = episode_results[episode_idx]
+            
+            if turn == 0:
+                # First turn: use initial prompt
+                current_prompt = initial_prompts[episode_idx]
+                prompt_input = prepare_thinking_input(tokenizer, current_prompt, enable_thinking=True)
+            else:
+                # Subsequent turns: build conversation
+                conversation_text = ""
+                for msg in episode_result['conversation_dialogue']:
+                    if msg['role'] == 'human':
+                        conversation_text += f"<|im_start|>user\n{msg['content']}<|im_end|>\n"
+                    elif msg['role'] == 'assistant':
+                        conversation_text += f"<|im_start|>assistant\n{msg['content']}<|im_end|>\n"
+                
+                conversation_text += "<|im_start|>assistant\n"
+                prompt_input = conversation_text
+            
+            active_prompts.append(prompt_input)
+            active_indices.append(episode_idx)
+        
+        # Generate responses for all active episodes
+        model_input = tokenizer(active_prompts, return_tensors="pt", padding=True).to(device)
+        
+        with torch.no_grad():
+            outputs = model.generate(
+                **model_input,
+                max_new_tokens=config.max_new_tokens,
+                logits_processor=[logit_processor],
+                return_dict_in_generate=True,
+                output_scores=True,
+            )
+        
+        generated_ids = outputs.sequences
+        prompt_lens = model_input.attention_mask.sum(dim=1)
+        
+        # Process each active episode
+        completed_episodes = set()
+        
+        for i, episode_idx in enumerate(active_indices):
+            prompt_len = prompt_lens[i].item()
+            response_ids = generated_ids[i][prompt_len:].tolist()
+            
+            # Extract thinking and content
+            thinking, content = extract_thinking_and_content(tokenizer, response_ids)
+            full_model_output = f"{thinking}\n{content}" if thinking else content
+            
+            # Add to conversation
+            episode_results[episode_idx]['conversation_dialogue'].append({"role": "assistant", "content": full_model_output})
+            
+            # Process command
+            result = task.process_single_command(content, ground_truths[episode_idx], episode_states[episode_idx])
+            
+            # Store turn information
+            episode_results[episode_idx]['episode_commands'].append(content)
+            episode_results[episode_idx]['episode_outputs'].append(result['command_output'])
+            episode_results[episode_idx]['episode_rewards'].append(result['reward'])
+            episode_results[episode_idx]['episode_thinking_contents'].append(thinking)
+            episode_results[episode_idx]['episode_contents'].append(content)
+            episode_results[episode_idx]['turn_count'] = len(episode_results[episode_idx]['episode_commands'])
+            
+            # Update episode state
+            episode_states[episode_idx] = task.update_episode_state(episode_states[episode_idx], result['command_output'])
+            episode_states[episode_idx]['terminal_context'] = result['terminal_context']
+            episode_states[episode_idx]['terminal_env'] = task.terminal_env
+            
+            # Handle no command case
+            if not content.strip():
+                episode_results[episode_idx]['conversation_dialogue'].append({"role": "human", "content": NO_COMMAND_MESSAGE})
+                continue
+            
+            # Process terminal results and add human message
+            if content.strip():
+                if result.get('reason') == 'no_command':
+                    episode_results[episode_idx]['conversation_dialogue'].append({"role": "human", "content": NO_COMMAND_MESSAGE})
+                elif result.get('terminal_context', '') and result.get('reason') != 'no_command':
+                    terminal_context = result.get('terminal_context', '')
+                    terminal_context = episode_states[episode_idx]['terminal_env'].get_context()
+                    
+                    if result.get('reward', 0.0) == 0.0 and result.get('is_verifier', False):
+                        terminal_message = get_verifier_incorrect_message(terminal_context)
+                        episode_results[episode_idx]['conversation_dialogue'].append({"role": "human", "content": terminal_message})
+                    elif result.get('reward', 0.0) == 1.0 and result.get('is_verifier', False):
+                        # Episode completed successfully
+                        episode_results[episode_idx]['episode_complete'] = True
+                        episode_results[episode_idx]['final_reward'] = result['reward']
+                        completed_episodes.add(episode_idx)
+                    else:
+                        terminal_message = get_normal_terminal_message(terminal_context)
+                        episode_results[episode_idx]['conversation_dialogue'].append({"role": "human", "content": terminal_message})
+            
+            # Check if episode complete
+            if result['episode_complete']:
+                episode_results[episode_idx]['episode_complete'] = True
+                episode_results[episode_idx]['final_reward'] = task.get_episode_reward(episode_states[episode_idx].get('terminal_env')) if result['episode_complete'] else 0.0
+                completed_episodes.add(episode_idx)
+        
+        # Remove completed episodes from active list
+        for episode_idx in completed_episodes:
+            if episode_idx in active_episodes:
+                active_episodes.remove(episode_idx)
+    
+    # Set final rewards for episodes that didn't complete
+    for episode_idx in range(batch_size):
+        if not episode_results[episode_idx]['episode_complete']:
+            episode_results[episode_idx]['final_reward'] = task.get_episode_reward(episode_states[episode_idx].get('terminal_env'))
+            episode_results[episode_idx]['terminal_context'] = episode_states[episode_idx].get('terminal_context', '')
+    
+    return episode_results
+
 # ============================================================================
 # MAIN TRAINING FUNCTIONS
 # ============================================================================
 
 def train_multi_turn(config_path: str = "config.yaml") -> None:
-    """Multi-turn training function for terminal-based tasks."""
+    """Multi-turn training function for terminal-based tasks with batching support."""
     config = load_config(config_path)
 
     # Setup
@@ -423,84 +583,91 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
 
     # Gradient accumulation variables
     gradient_accumulation_steps = getattr(config, 'gradient_accumulation_steps', 1)
+    batch_size = config.batch_size
     accumulated_loss = 0.0
     accumulated_rewards = []
     accumulated_episodes = []
 
-    for episode in range(config.num_episodes):
+    # Calculate number of batches needed
+    num_batches = (config.num_episodes + batch_size - 1) // batch_size
+
+    for batch_idx in range(num_batches):
         model.eval()
         logit_processor.reset()
 
         # Prepare batch and prompts
-        batch_indices = [random.randrange(len(task)) for _ in range(1)]
+        batch_indices = [random.randrange(len(task)) for _ in range(batch_size)]
         batch = [task[idx] for idx in batch_indices]
         prompts = build_prompts(config, batch, custom_prompt)
+        ground_truths = [b['answer'] for b in batch]
 
-        # Run multi-turn episode
-        episode_result = run_multi_turn_episode(
-            model, tokenizer, task, prompts[0], logit_processor, config, device, batch[0]['answer']
+        # Run batched multi-turn episodes
+        episode_results = run_batched_multi_turn_episodes(
+            model, tokenizer, task, prompts, logit_processor, config, device, ground_truths
         )
 
-        # Prepare for training
-        base_rewards = [episode_result['final_reward']]
-        penalties = [0.0]
-        thinking_penalties = [0.0]
-        penalized_rewards = [episode_result['final_reward']]
+        # Process each episode in the batch
+        for episode_idx, episode_result in enumerate(episode_results):
+            # Prepare for training
+            base_rewards = [episode_result['final_reward']]
+            penalties = [0.0]
+            thinking_penalties = [0.0]
+            penalized_rewards = [episode_result['final_reward']]
 
-        # Convert to tensors
-        base_rewards = torch.tensor(base_rewards, dtype=torch.float32, device=device)
-        penalties = torch.tensor(penalties, dtype=torch.float32, device=device)
-        thinking_penalties = torch.tensor(thinking_penalties, dtype=torch.float32, device=device)
-        rewards = torch.tensor(penalized_rewards, dtype=torch.float32, device=device)
+            # Convert to tensors
+            base_rewards = torch.tensor(base_rewards, dtype=torch.float32, device=device)
+            penalties = torch.tensor(penalties, dtype=torch.float32, device=device)
+            thinking_penalties = torch.tensor(thinking_penalties, dtype=torch.float32, device=device)
+            rewards = torch.tensor(penalized_rewards, dtype=torch.float32, device=device)
 
-        # Training step
-        if (episode % gradient_accumulation_steps) == 0:
-            optimizer.zero_grad()
+            # Training step
+            if ((batch_idx * batch_size + episode_idx) % gradient_accumulation_steps) == 0:
+                optimizer.zero_grad()
 
-        # Get the last command's logits for training
-        last_prompt_input = prepare_thinking_input(tokenizer, prompts[0], enable_thinking=True)
-        last_model_input = tokenizer([last_prompt_input], return_tensors="pt").to(device)
+            # Get the last command's logits for training
+            last_prompt_input = prepare_thinking_input(tokenizer, prompts[episode_idx], enable_thinking=True)
+            last_model_input = tokenizer([last_prompt_input], return_tensors="pt").to(device)
 
-        logits = model(last_model_input.input_ids).logits
-        target_tokens = last_model_input.input_ids[:, 1:]
+            logits = model(last_model_input.input_ids).logits
+            target_tokens = last_model_input.input_ids[:, 1:]
 
-        # Build mask for response tokens
-        seq_len = last_model_input.input_ids.size(1) - 1
-        arange = torch.arange(seq_len, device=device).unsqueeze(0)
-        start_idx = torch.tensor([last_model_input.input_ids.size(1) - 1], device=device).unsqueeze(1)
-        mask = arange >= start_idx
+            # Build mask for response tokens
+            seq_len = last_model_input.input_ids.size(1) - 1
+            arange = torch.arange(seq_len, device=device).unsqueeze(0)
+            start_idx = torch.tensor([last_model_input.input_ids.size(1) - 1], device=device).unsqueeze(1)
+            mask = arange >= start_idx
 
-        loss, kl_penalty_mean = perform_training_step(
-            model, optimizer, rewards, logits, target_tokens, mask, ref_model, config, gradient_accumulation_steps, last_model_input.input_ids
-        )
+            loss, kl_penalty_mean = perform_training_step(
+                model, optimizer, rewards, logits, target_tokens, mask, ref_model, config, gradient_accumulation_steps, last_model_input.input_ids
+            )
 
-        # Store metrics
-        accumulated_loss += loss
-        accumulated_rewards.extend(rewards.tolist())
-        accumulated_episodes.append({
-            'episode': episode,
-            'prompts': prompts,
-            'targets': [b["answer"] for b in batch],
-            'thinking_contents': episode_result['episode_thinking_contents'],
-            'contents': episode_result['episode_contents'],
-            'rewards': rewards.tolist(),
-            'base_rewards': base_rewards.tolist(),
-            'penalties': penalties.tolist(),
-            'thinking_penalties': thinking_penalties.tolist(),
-            'loss': loss,
-            'kl_penalty_mean': kl_penalty_mean,
-            'turn_count': episode_result['turn_count'],
-            'episode_complete': episode_result['episode_complete'],
-            'final_reward': episode_result['final_reward'],
-            'commands': episode_result['episode_commands'],
-            'command_outputs': episode_result['episode_outputs'],
-            'terminal_context': episode_result['terminal_context'],
-            'episode_rewards': episode_result['episode_rewards'],
-            'conversation_dialogue': episode_result['conversation_dialogue'],
-        })
+            # Store metrics
+            accumulated_loss += loss
+            accumulated_rewards.extend(rewards.tolist())
+            accumulated_episodes.append({
+                'episode': batch_idx * batch_size + episode_idx,
+                'prompts': [prompts[episode_idx]],
+                'targets': [batch[episode_idx]["answer"]],
+                'thinking_contents': episode_result['episode_thinking_contents'],
+                'contents': episode_result['episode_contents'],
+                'rewards': rewards.tolist(),
+                'base_rewards': base_rewards.tolist(),
+                'penalties': penalties.tolist(),
+                'thinking_penalties': thinking_penalties.tolist(),
+                'loss': loss,
+                'kl_penalty_mean': kl_penalty_mean,
+                'turn_count': episode_result['turn_count'],
+                'episode_complete': episode_result['episode_complete'],
+                'final_reward': episode_result['final_reward'],
+                'commands': episode_result['episode_commands'],
+                'command_outputs': episode_result['episode_outputs'],
+                'terminal_context': episode_result['terminal_context'],
+                'episode_rewards': episode_result['episode_rewards'],
+                'conversation_dialogue': episode_result['conversation_dialogue'],
+            })
 
         # Optimizer step and logging
-        if (episode + 1) % gradient_accumulation_steps == 0 or episode == config.num_episodes - 1:
+        if ((batch_idx + 1) * batch_size) % gradient_accumulation_steps == 0 or batch_idx == num_batches - 1:
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             zero_special_token_grads(model, tokenizer)
             optimizer.step()
@@ -517,7 +684,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     "avg_turn_count": avg_turn_count,
                     "completion_rate": completion_rate,
                 "max_turns": getattr(config, 'max_turns', 10),
-            }, step=episode)
+            }, step=batch_idx)
 
             # Log rollouts in multiple formats
             for episode_data in accumulated_episodes:
@@ -728,27 +895,7 @@ def train(config_path: str = "config.yaml") -> None:
                     "gradient_accumulation_step": episode // gradient_accumulation_steps,
             }, step=episode)
 
-            # Log rollouts in multiple formats
             for episode_data in accumulated_episodes:
-                # Log in JSON format
-                rollout_logger.log_rollout(
-                    episode=episode_data['episode'],
-                    prompts=episode_data['prompts'],
-                    targets=episode_data['targets'],
-                    thinking_contents=episode_data['thinking_contents'],
-                    contents=episode_data['contents'],
-                    rewards=episode_data['rewards'],
-                    loss=episode_data['loss'],
-                    thinking_penalties=episode_data['thinking_penalties'],
-                    output_word_penalties=[{}],
-                    thinking_word_penalties=[{}],
-                    output_word_counts=[{}],
-                    thinking_word_counts=[{}],
-                    kl_penalty_mean=episode_data['kl_penalty_mean'],
-                    format="json"
-                )
-                
-                # Also log in super readable text format
                 rollout_logger.log_rollout(
                     episode=episode_data['episode'],
                     prompts=episode_data['prompts'],
