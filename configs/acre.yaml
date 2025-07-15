@@ -9,15 +9,15 @@ custom_verifier_path: "registry" # "registry" automatically finds the custom ver
 custom_prompt_path: "registry" # "registry" automatically finds the custom prompt in /prompts for the selected task
 
 # training
-batch_size: 2
-gradient_accumulation_steps: 8
-learning_rate: 1e-5
+batch_size: 4
+gradient_accumulation_steps: 4
+learning_rate: 3e-6
 num_episodes: 1000
 kl_coefficient: 0.0
-min_thinking_tokens: 0
-max_thinking_tokens: 400
+min_thinking_tokens: 10
+max_thinking_tokens: 200
 min_output_tokens: 10
-max_new_tokens: 600
+max_new_tokens: 300
 seed: 42
 device: "cuda"
 
