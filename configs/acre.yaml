@@ -26,12 +26,12 @@ device: "cuda"
 # penalty configuration
 word_penalty:
   enabled: true
-  words: ["married"]
+  words: ["detector"]
   penalty_per_word: 0.5
   max_penalty: 2
 
 # wandb
-wandb_project: "family_rel"
+wandb_project: "qwen3-reinforce-reasongym"
 wandb_entity: null
 # Optional Hugging Face repo to push the trained model (or LoRA adapters)
 hf_repo_out: null
