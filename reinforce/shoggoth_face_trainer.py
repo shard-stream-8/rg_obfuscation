@@ -95,7 +95,7 @@ def train(config_path: str = "config.yaml") -> None:
         list(gen_engine.face_model.parameters()) + list(gen_engine.shoggoth_model.parameters()),
         lr=float(config.learning_rate),
         betas=(0.9, 0.95),
-        weight_decay=1e-2,
+        weight_decay=float(getattr(config, 'weight_decay', 0.0)),
     )
 
     # ------------------------------------------------------------------
