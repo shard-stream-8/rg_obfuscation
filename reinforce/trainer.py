@@ -36,6 +36,9 @@ class Config:
             self.hf_repo_out = None
         if not hasattr(self, 'weight_decay'):
             self.weight_decay = 0.0
+        if not hasattr(self, 'sampling_temperature'):
+            # Default 1.0 matches HuggingFace generate() default
+            self.sampling_temperature = 1.0
 
 
 def train(config_path: str = "config.yaml") -> None:
@@ -183,6 +186,7 @@ def train(config_path: str = "config.yaml") -> None:
                         logits_processor=processors,
                         return_dict_in_generate=True,
                         output_scores=True,
+                        temperature=float(getattr(config, 'sampling_temperature', 1.0)),
                     )
             except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
                 if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
