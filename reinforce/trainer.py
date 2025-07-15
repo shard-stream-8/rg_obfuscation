@@ -34,6 +34,8 @@ class Config:
     def _ensure_defaults(self):
         if not hasattr(self, 'hf_repo_out'):
             self.hf_repo_out = None
+        if not hasattr(self, 'weight_decay'):
+            self.weight_decay = 0.0
 
 
 def train(config_path: str = "config.yaml") -> None:
@@ -94,7 +96,7 @@ def train(config_path: str = "config.yaml") -> None:
         model.parameters(),
         lr=float(config.learning_rate),
         betas=(0.9, 0.95),
-        weight_decay=1e-2,
+        weight_decay=float(getattr(config, 'weight_decay', 0.0)),
     )
 
     # Processor that constrains the number of <think> tokens ---------------
