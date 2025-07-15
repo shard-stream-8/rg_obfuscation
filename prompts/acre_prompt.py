@@ -1,9 +1,5 @@
 # Import BasePrompt
-try:
-    from prompts.base_prompt import BasePrompt
-except ImportError:
-    # Fallback for when running from within the prompts directory
-    from base_prompt import BasePrompt
+from prompts.base_prompt import BasePrompt
 
 class AcrePrompt(BasePrompt):
     """

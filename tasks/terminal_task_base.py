@@ -1,6 +1,7 @@
 import re
 from typing import List, Dict, Any, Optional
 from terminal_env import TerminalEnvironment
+from prompts.terminal_prompts import get_command_failed_message
 
 class TerminalTaskBase:
     """
@@ -128,7 +129,7 @@ class TerminalTaskBase:
                     'reward': 0.0,
                     'episode_complete': False,
                     'command_output': "No command found",
-                    'terminal_context': self.terminal_env.get_terminal_context() if self.terminal_env else "",
+                    'terminal_context': "",  # Empty context when no command is executed
                     'turn_count': self.terminal_env.turn_count if self.terminal_env else 0,
                     'is_verifier': False,
                     'reason': 'no_command'
@@ -142,7 +143,7 @@ class TerminalTaskBase:
                 'reward': result['reward'],
                 'episode_complete': result['episode_complete'],
                 'command_output': result['output'],
-                'terminal_context': self.terminal_env.get_terminal_context() if self.terminal_env else "",
+                'terminal_context': self.terminal_env.get_context() if self.terminal_env else "",
                 'turn_count': result['turn_count'],
                 'is_verifier': result['is_verifier'],
                 'reason': result['reason'],
@@ -154,7 +155,7 @@ class TerminalTaskBase:
                 'reward': 0.0,
                 'episode_complete': False,
                 'command_output': f"Error: {str(e)}",
-                'terminal_context': self.terminal_env.get_terminal_context() if self.terminal_env else "",
+                'terminal_context': get_command_failed_message(str(e)),  # Use centralized error message
                 'turn_count': self.terminal_env.turn_count if self.terminal_env else 0,
                 'is_verifier': False,
                 'reason': 'error'
@@ -225,7 +226,7 @@ class TerminalTaskBase:
                         break
             
             # Get terminal context for logging
-            terminal_context = self.terminal_env.get_terminal_context()
+            terminal_context = self.terminal_env.get_context()
             
             return {
                 'reward': reward,

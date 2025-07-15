@@ -1,10 +1,4 @@
-# Import BasePrompt using absolute import
-try:
-    from prompts.base_prompt import BasePrompt
-except ImportError:
-    # Fallback when executed inside prompts directory
-    from base_prompt import BasePrompt
-
+from prompts.base_prompt import BasePrompt
 
 class LargestIslandPrompt(BasePrompt):
     """

@@ -4,6 +4,9 @@ import tempfile
 import shutil
 import json
 from typing import Dict, Any, Optional
+from prompts.terminal_prompts import (
+    get_verifier_incorrect_message
+)
 
 class TerminalEnvironment:
     """
@@ -142,13 +145,21 @@ if __name__ == "__main__":
                 reward = float(output.strip())
                 result['reward'] = reward
                 
-                # If verifier returned positive, mark episode complete
-                if reward > 0.0:
+                # Add explicit interpretation of verifier result
+                if reward == 1.0:
+                    result['output'] = f"{output.strip()}\n\n✅ SUCCESS: Your answer is CORRECT! The verifier returned 1.0, which means your solution is valid."
                     self.episode_complete = True
                     self.final_reward = reward
                     result['episode_complete'] = True
                     result['reason'] = 'verifier_positive'
+                elif reward == 0.0:
+                    result['output'] = f"{output.strip()}\n\n❌ INCORRECT: Your answer is WRONG. The verifier returned 0.0, which means your solution is not valid. Please try a different approach."
+                    result['reason'] = 'verifier_negative'
+                else:
+                    result['output'] = f"{output.strip()}\n\n⚠️ UNEXPECTED: The verifier returned {reward}, which is neither 0.0 nor 1.0. This might indicate an error."
+                    result['reason'] = 'verifier_unexpected'
             except (ValueError, TypeError):
+                result['output'] = f"{output.strip()}\n\n⚠️ ERROR: The verifier output '{output.strip()}' could not be parsed as a number. Please check your verifier command."
                 result['reason'] = 'verifier_error'
         
         # Check turn limit
@@ -166,23 +177,37 @@ if __name__ == "__main__":
         """Get the final reward for the episode."""
         return self.final_reward
     
-    def get_current_context(self) -> str:
-        """Get current terminal context for next turn."""
-        return self.get_terminal_context()
-    
-    def mark_episode_complete(self, reward: float):
-        """Mark episode as complete with final reward."""
-        self.episode_complete = True
-        self.final_reward = reward
-    
-    def get_terminal_context(self) -> str:
+    def get_context(self) -> str:
         """
-        Get the current terminal context (all previous commands and outputs).
-        
-        Returns:
-            String containing all terminal history
+        Get the current terminal context (all previous commands and outputs) with enhanced formatting and interpretation.
+        This is the only context method and always returns the best-formatted context.
         """
-        return "\n".join(self.terminal_output)
+        if not self.terminal_output:
+            return "No commands executed yet."
+        formatted_output = []
+        for i in range(0, len(self.terminal_output), 2):
+            if i + 1 < len(self.terminal_output):
+                command = self.terminal_output[i]
+                output = self.terminal_output[i + 1]
+                # Add interpretation for verifier commands
+                if command.strip().startswith('$ python verifier.py'):
+                    try:
+                        reward = float(output.strip())
+                        if reward == 1.0:
+                            interpretation = "✅ CORRECT - Your answer is valid!"
+                        elif reward == 0.0:
+                            interpretation = "❌ INCORRECT - Your answer is wrong, try again"
+                        else:
+                            interpretation = f"⚠️ UNEXPECTED - Verifier returned {reward}"
+                    except (ValueError, TypeError):
+                        interpretation = f"⚠️ ERROR - Could not parse verifier output: {output.strip()}"
+                    formatted_output.append(f"{command}\n{output}\n{interpretation}")
+                else:
+                    formatted_output.append(f"{command}\n{output}")
+            else:
+                # Handle case where we have a command but no output
+                formatted_output.append(self.terminal_output[i])
+        return "\n\n".join(formatted_output)
     
     def get_episode_summary(self) -> Dict[str, Any]:
         """
@@ -195,7 +220,7 @@ if __name__ == "__main__":
             'turn_count': self.turn_count,
             'episode_complete': self.is_episode_complete(),
             'final_reward': self.final_reward,
-            'terminal_context': self.get_terminal_context(),
+            'terminal_context': self.get_context(),
             'max_turns': self.max_turns
         }
     
