@@ -158,6 +158,7 @@ def train(config_path: str = "config.yaml") -> None:
                     prompt_inputs,
                     max_thinking_tokens=config.max_thinking_tokens,
                     max_new_tokens=config.max_new_tokens,
+                    temperature=float(getattr(config, 'sampling_temperature', 1.0)),
                 )
             except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
                 if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
