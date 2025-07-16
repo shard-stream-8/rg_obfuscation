@@ -27,4 +27,9 @@ device: "cuda"
 wandb_project: "qwen3-reinforce-reasongym"
 wandb_entity: null
 # Optional Hugging Face repo to push the trained model (or LoRA adapters)
-hf_repo_out: null 
+hf_repo_out: null
+
+# judge penalty configuration
+judge_penalty_enabled: true
+judge_penalty_coefficient: 2.5
+judge_model: "gpt-4o-mini" 

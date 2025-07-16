@@ -11,6 +11,7 @@ from .rollout_logger import RolloutLogger
 from .kl_penalty import compute_kl_penalty
 from .logit_processor import BatchThinkingTokenBudgetProcessor
 from .utils import zero_special_token_grads
+from .judge import JudgePenalty
 from prompts.terminal_prompts import (
     get_initial_terminal_instructions,
     get_multi_turn_terminal_instructions,
@@ -230,9 +231,9 @@ def generate_responses(model: Any, tokenizer: Any, prompts: List[str],
     return thinking_contents, contents
 
 def calculate_rewards_and_penalties(task: Any, batch: List[Dict], contents: List[str],
-                                  thinking_contents: List[str]) -> Tuple[List[float], List[float], List[float], List[float]]:
+                                  thinking_contents: List[str], judge_penalty: JudgePenalty = None) -> Tuple[List[float], List[float], List[float], List[float], List[float], List[float]]:
     """Calculate rewards and penalties for the batch."""
-    base_rewards, penalties, thinking_penalties, penalized_rewards = [], [], [], []
+    base_rewards, penalties, thinking_penalties, penalized_rewards, judge_penalties, judge_scores = [], [], [], [], [], []
 
     for b, c, thinking_c in zip(batch, contents, thinking_contents):
         if hasattr(task, 'process_model_output'):
@@ -256,12 +257,21 @@ def calculate_rewards_and_penalties(task: Any, batch: List[Dict], contents: List
                 thinking_penalty = 0.0
                 penalized_reward = base_reward
 
+        # Add judge penalty if enabled
+        judge_penalty_value = 0.0
+        judge_score = 0.0
+        if judge_penalty is not None:
+            judge_penalty_value, judge_score = judge_penalty.calculate_penalty_sync_with_score(b['question'], c, None)
+            penalized_reward -= judge_penalty_value
+
         base_rewards.append(base_reward)
         penalties.append(penalty)
         thinking_penalties.append(thinking_penalty)
+        judge_penalties.append(judge_penalty_value)
+        judge_scores.append(judge_score)
         penalized_rewards.append(penalized_reward)
 
-    return base_rewards, penalties, thinking_penalties, penalized_rewards
+    return base_rewards, penalties, thinking_penalties, penalized_rewards, judge_penalties, judge_scores
 
 def perform_training_step(model: Any, optimizer: Any, rewards: torch.Tensor,
                         logits: torch.Tensor, target_tokens: torch.Tensor, mask: torch.Tensor,
@@ -576,6 +586,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
     task, wandb_logger, rollout_logger = setup_task_and_logging(config)
     optimizer, logit_processor = setup_training_components(config, model, tokenizer)
     custom_prompt = load_custom_prompt(config)
+    judge_penalty = JudgePenalty(config)
 
     # Set random seed
     torch.manual_seed(config.seed)
@@ -586,6 +597,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
     batch_size = config.batch_size
     accumulated_loss = 0.0
     accumulated_rewards = []
+    accumulated_judge_penalties = []
     accumulated_episodes = []
 
     # Calculate number of batches needed
@@ -613,6 +625,16 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             penalties = [0.0]
             thinking_penalties = [0.0]
             penalized_rewards = [episode_result['final_reward']]
+
+            # Apply judge penalty if enabled
+            judge_penalty_value = 0.0
+            judge_score = 0.0
+            if judge_penalty is not None and len(episode_result['episode_contents']) > 0:
+                judge_penalty_value, judge_score = judge_penalty.calculate_penalty_sync_with_score(
+                    prompts[episode_idx], episode_result['episode_contents'][-1], 
+                    episode_result['conversation_dialogue']
+                )
+                penalized_rewards[0] -= judge_penalty_value
 
             # Convert to tensors
             base_rewards = torch.tensor(base_rewards, dtype=torch.float32, device=device)
@@ -644,6 +666,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             # Store metrics
             accumulated_loss += loss
             accumulated_rewards.extend(rewards.tolist())
+            accumulated_judge_penalties.append(judge_penalty_value)
             accumulated_episodes.append({
                 'episode': batch_idx * batch_size + episode_idx,
                 'prompts': [prompts[episode_idx]],
@@ -654,6 +677,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 'base_rewards': base_rewards.tolist(),
                 'penalties': penalties.tolist(),
                 'thinking_penalties': thinking_penalties.tolist(),
+                'judge_scores': [judge_score],
                 'loss': loss,
                 'kl_penalty_mean': kl_penalty_mean,
                 'turn_count': episode_result['turn_count'],
@@ -675,12 +699,14 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             # Log metrics
             avg_loss = accumulated_loss / len(accumulated_episodes) if accumulated_episodes else 0.0
             avg_reward = sum(accumulated_rewards) / len(accumulated_rewards) if accumulated_rewards else 0.0
+            avg_judge_penalty = sum(accumulated_judge_penalties) / len(accumulated_judge_penalties) if accumulated_judge_penalties else 0.0
             avg_turn_count = sum(ep['turn_count'] for ep in accumulated_episodes) / len(accumulated_episodes) if accumulated_episodes else 0.0
             completion_rate = sum(1 for ep in accumulated_episodes if ep['episode_complete']) / len(accumulated_episodes) if accumulated_episodes else 0.0
 
             wandb_logger.log({
                     "loss": avg_loss,
                 "reward_mean": avg_reward,
+                    "judge_penalty_mean": avg_judge_penalty,
                     "avg_turn_count": avg_turn_count,
                     "completion_rate": completion_rate,
                 "max_turns": getattr(config, 'max_turns', 10),
@@ -703,6 +729,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     output_word_counts=[{}],
                     thinking_word_counts=[{}],
                     kl_penalty_mean=episode_data['kl_penalty_mean'],
+                    judge_scores=episode_data.get('judge_scores', []),
                     turn_count=episode_data['turn_count'],
                     episode_complete=episode_data['episode_complete'],
                     final_reward=episode_data['final_reward'],
@@ -729,6 +756,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     output_word_counts=[{}],
                     thinking_word_counts=[{}],
                     kl_penalty_mean=episode_data['kl_penalty_mean'],
+                    judge_scores=episode_data.get('judge_scores', []),
                     turn_count=episode_data['turn_count'],
                     episode_complete=episode_data['episode_complete'],
                     final_reward=episode_data['final_reward'],
@@ -743,6 +771,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             # Reset accumulation variables
             accumulated_loss = 0.0
             accumulated_rewards = []
+            accumulated_judge_penalties = []
             accumulated_episodes = []
 
     wandb_logger.finish()
@@ -762,6 +791,7 @@ def train(config_path: str = "config.yaml") -> None:
     task, wandb_logger, rollout_logger = setup_task_and_logging(config)
     optimizer, logit_processor = setup_training_components(config, model, tokenizer)
     custom_prompt = load_custom_prompt(config)
+    judge_penalty = JudgePenalty(config)
 
     # Set random seed
     torch.manual_seed(config.seed)
@@ -774,6 +804,7 @@ def train(config_path: str = "config.yaml") -> None:
     accumulated_base_rewards = []
     accumulated_penalties = []
     accumulated_thinking_penalties = []
+    accumulated_judge_penalties = []
     accumulated_advantages = []
     accumulated_kl_penalties = []
     accumulated_episodes = []
@@ -792,14 +823,15 @@ def train(config_path: str = "config.yaml") -> None:
         thinking_contents, contents = generate_responses(model, tokenizer, prompts, logit_processor, config, device)
 
         # Calculate rewards and penalties
-        base_rewards, penalties, thinking_penalties, penalized_rewards = calculate_rewards_and_penalties(
-            task, batch, contents, thinking_contents
+        base_rewards, penalties, thinking_penalties, penalized_rewards, judge_penalties, judge_scores = calculate_rewards_and_penalties(
+            task, batch, contents, thinking_contents, judge_penalty
         )
 
         # Convert to tensors
         base_rewards = torch.tensor(base_rewards, dtype=torch.float32, device=device)
         penalties = torch.tensor(penalties, dtype=torch.float32, device=device)
         thinking_penalties = torch.tensor(thinking_penalties, dtype=torch.float32, device=device)
+        judge_penalties = torch.tensor(judge_penalties, dtype=torch.float32, device=device)
         rewards = torch.tensor(penalized_rewards, dtype=torch.float32, device=device)
 
         # Training step
@@ -853,6 +885,7 @@ def train(config_path: str = "config.yaml") -> None:
         accumulated_base_rewards.extend(base_rewards.tolist())
         accumulated_penalties.extend(penalties.tolist())
         accumulated_thinking_penalties.extend(thinking_penalties.tolist())
+        accumulated_judge_penalties.extend(judge_penalties.tolist())
         accumulated_kl_penalties.extend([kl_penalty_mean] * len(rewards))
 
         episode_data = {
@@ -865,6 +898,7 @@ def train(config_path: str = "config.yaml") -> None:
             'base_rewards': base_rewards.tolist(),
             'penalties': penalties.tolist(),
             'thinking_penalties': thinking_penalties.tolist(),
+            'judge_scores': judge_scores,
             'loss': loss,
             'kl_penalty_mean': kl_penalty_mean,
         }
@@ -882,6 +916,7 @@ def train(config_path: str = "config.yaml") -> None:
             avg_base_reward = sum(accumulated_base_rewards) / len(accumulated_base_rewards) if accumulated_base_rewards else 0.0
             avg_penalty = sum(accumulated_penalties) / len(accumulated_penalties) if accumulated_penalties else 0.0
             avg_thinking_penalty = sum(accumulated_thinking_penalties) / len(accumulated_thinking_penalties) if accumulated_thinking_penalties else 0.0
+            avg_judge_penalty = sum(accumulated_judge_penalties) / len(accumulated_judge_penalties) if accumulated_judge_penalties else 0.0
             avg_kl_penalty = sum(accumulated_kl_penalties) / len(accumulated_kl_penalties) if accumulated_kl_penalties else 0.0
 
             wandb_logger.log({
@@ -890,6 +925,7 @@ def train(config_path: str = "config.yaml") -> None:
                 "penalized_reward": avg_reward,
                 "penalty": avg_penalty,
                     "thinking_penalty_mean": avg_thinking_penalty,
+                    "judge_penalty_mean": avg_judge_penalty,
                     "kl_penalty_mean": avg_kl_penalty,
                     "kl_penalty_scaled": (config.kl_coefficient * avg_kl_penalty),
                     "gradient_accumulation_step": episode // gradient_accumulation_steps,
@@ -910,6 +946,7 @@ def train(config_path: str = "config.yaml") -> None:
                     output_word_counts=[{}],
                     thinking_word_counts=[{}],
                     kl_penalty_mean=episode_data['kl_penalty_mean'],
+                    judge_scores=episode_data.get('judge_scores', []),
                     format="super_readable"
                 )
 
@@ -919,6 +956,7 @@ def train(config_path: str = "config.yaml") -> None:
             accumulated_base_rewards = []
             accumulated_penalties = []
             accumulated_thinking_penalties = []
+            accumulated_judge_penalties = []
             accumulated_kl_penalties = []
             accumulated_episodes = []
 

@@ -4,3 +4,4 @@ wandb
 pyyaml
 reasoning_gym
 accelerate
+openai

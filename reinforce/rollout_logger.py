@@ -61,6 +61,7 @@ class RolloutLogger:
                    terminal_context: str = None,
                    episode_rewards: List[float] = None,
                    conversation_dialogue: List[Dict[str, str]] = None,
+                   judge_scores: List[float] = None,
                    format: Literal["json", "readable", "super_readable"] = "json"):
         """Log a single rollout with specified format (json, readable, or super_readable)."""
         
@@ -81,11 +82,12 @@ class RolloutLogger:
         reward_mean = sum(rewards) / len(rewards) if rewards else 0.0
         reward_std = (sum((r - reward_mean)**2 for r in rewards) / len(rewards))**0.5 if len(rewards) > 1 else 0.0
         thinking_penalty_mean = sum(thinking_penalties) / len(thinking_penalties) if thinking_penalties else 0.0
+        judge_score = judge_scores[0] if judge_scores else 0.0
         
         if format == "super_readable":
             self._log_rollout_super_readable(
                 episode, rewards, loss, reward_mean, reward_std, kl_penalty_mean, 
-                thinking_penalty_mean, turn_count, episode_complete, final_reward, 
+                thinking_penalty_mean, judge_score, turn_count, episode_complete, final_reward, 
                 conversation_dialogue
             )
         else:
@@ -99,7 +101,8 @@ class RolloutLogger:
                     "reward_mean": reward_mean,
                     "reward_std": reward_std,
                     "kl_penalty_mean": kl_penalty_mean,
-                    "thinking_penalty_mean": thinking_penalty_mean
+                    "thinking_penalty_mean": thinking_penalty_mean,
+                    "judge_score": judge_score
                 }
             }
             
@@ -145,7 +148,7 @@ class RolloutLogger:
     
     def _log_rollout_super_readable(self, episode: int, rewards: List[float], loss: float,
                                    reward_mean: float, reward_std: float, kl_penalty_mean: float,
-                                   thinking_penalty_mean: float, turn_count: int = None,
+                                   thinking_penalty_mean: float, judge_score: float, turn_count: int = None,
                                    episode_complete: bool = None, final_reward: float = None,
                                    conversation_dialogue: List[Dict[str, str]] = None):
         """Log a single rollout in a super readable text format that preserves all formatting."""
@@ -168,6 +171,7 @@ class RolloutLogger:
             f.write(f"Loss: {loss:.4f}\n")
             f.write(f"KL Penalty Mean: {kl_penalty_mean:.4f}\n")
             f.write(f"Thinking Penalty Mean: {thinking_penalty_mean:.4f}\n")
+            f.write(f"Judge Score: {judge_score:.4f}\n")
             
             if turn_count is not None:
                 f.write(f"Turn Count: {turn_count}\n")
