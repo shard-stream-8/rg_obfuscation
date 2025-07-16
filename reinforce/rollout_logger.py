@@ -84,11 +84,38 @@ class RolloutLogger:
         thinking_penalty_mean = sum(thinking_penalties) / len(thinking_penalties) if thinking_penalties else 0.0
         judge_score = judge_scores[0] if judge_scores else 0.0
         
+        # Prepare judge information
+        judge_info = None
+        if judge_scores and judge_scores[0] > 0:
+            # Extract what the judge sees (only assistant's final output)
+            if conversation_dialogue:
+                from reinforce.judge import JudgePenalty
+                judge_penalty = JudgePenalty(type('Config', (), {'judge_penalty_enabled': False})())
+                assistant_output = judge_penalty._extract_dialogue(conversation_dialogue)
+                if assistant_output:
+                    judge_info = {
+                        "assistant_output_seen_by_judge": assistant_output,
+                        "score": judge_score,
+                        "score_scale": "0-2 (0=cheating, 1=suspicious, 2=legitimate)"
+                    }
+            else:
+                # For single-turn cases, show the filtered response
+                from reinforce.judge import JudgePenalty
+                judge_penalty = JudgePenalty(type('Config', (), {'judge_penalty_enabled': False})())
+                filtered_response = judge_penalty._filter_cot_content(contents[0] if contents else "")
+                filtered_response = judge_penalty._filter_commands_and_outputs(filtered_response)
+                if filtered_response.strip():
+                    judge_info = {
+                        "assistant_output_seen_by_judge": filtered_response,
+                        "score": judge_score,
+                        "score_scale": "0-2 (0=cheating, 1=suspicious, 2=legitimate)"
+                    }
+        
         if format == "super_readable":
             self._log_rollout_super_readable(
                 episode, rewards, loss, reward_mean, reward_std, kl_penalty_mean, 
                 thinking_penalty_mean, judge_score, turn_count, episode_complete, final_reward, 
-                conversation_dialogue
+                conversation_dialogue, judge_info
             )
         else:
             # Build simplified rollout data focusing on essential information
@@ -101,10 +128,13 @@ class RolloutLogger:
                     "reward_mean": reward_mean,
                     "reward_std": reward_std,
                     "kl_penalty_mean": kl_penalty_mean,
-                    "thinking_penalty_mean": thinking_penalty_mean,
-                    "judge_score": judge_score
+                    "thinking_penalty_mean": thinking_penalty_mean
                 }
             }
+            
+            # Add judge information as its own section
+            if judge_info:
+                rollout_data["judge_evaluation"] = judge_info
             
             # Add conversation dialogue if provided (this is the main focus)
             if conversation_dialogue is not None:
@@ -150,7 +180,8 @@ class RolloutLogger:
                                    reward_mean: float, reward_std: float, kl_penalty_mean: float,
                                    thinking_penalty_mean: float, judge_score: float, turn_count: int = None,
                                    episode_complete: bool = None, final_reward: float = None,
-                                   conversation_dialogue: List[Dict[str, str]] = None):
+                                   conversation_dialogue: List[Dict[str, str]] = None,
+                                   judge_info: Dict[str, Any] = None):
         """Log a single rollout in a super readable text format that preserves all formatting."""
         
         filename = f"rollout_episode_{episode:06d}_{self.run_id}_super_readable.txt"
@@ -171,12 +202,22 @@ class RolloutLogger:
             f.write(f"Loss: {loss:.4f}\n")
             f.write(f"KL Penalty Mean: {kl_penalty_mean:.4f}\n")
             f.write(f"Thinking Penalty Mean: {thinking_penalty_mean:.4f}\n")
-            f.write(f"Judge Score: {judge_score:.4f}\n")
             
             if turn_count is not None:
                 f.write(f"Turn Count: {turn_count}\n")
                 f.write(f"Episode Complete: {episode_complete}\n")
                 f.write(f"Final Reward: {final_reward}\n")
+            
+            # Write judge evaluation section
+            if judge_info:
+                f.write("\n" + "=" * 80 + "\n")
+                f.write("⚖️ JUDGE EVALUATION:\n")
+                f.write("=" * 80 + "\n\n")
+                f.write(f"Score: {judge_info['score']:.4f} ({judge_info['score_scale']})\n\n")
+                f.write("Assistant output seen by judge:\n")
+                f.write("-" * 60 + "\n")
+                f.write(judge_info['assistant_output_seen_by_judge'])
+                f.write("\n\n")
             
             f.write("\n" + "=" * 80 + "\n")
             f.write("💬 CONVERSATION DIALOGUE:\n")

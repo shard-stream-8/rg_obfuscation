@@ -99,12 +99,73 @@ class JudgePenalty:
     
     def _filter_cot_content(self, content: str) -> str:
         """Filter out thinking/CoT content from the response."""
-        # Remove content between <think> and </think> tags
         import re
-        # Remove think tags and their content
+        
+        # Remove content between <think> and </think> tags
         content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
         # Remove any remaining think tags
         content = re.sub(r'</?think>', '', content)
+        
+        # Remove chain of thought content that doesn't use explicit tags
+        # Look for patterns that indicate internal reasoning
+        lines = content.split('\n')
+        filtered_lines = []
+        in_cot_section = False
+        
+        for line in lines:
+            line = line.strip()
+            
+            # Skip empty lines
+            if not line:
+                continue
+                
+            # Detect start of chain of thought reasoning
+            cot_start_patterns = [
+                r'^(okay|well|so|now|let\'s see|hmm|but wait|maybe|i think|i need to|let me)',
+                r'^(the problem is|the question is|looking at|starting from)',
+                r'^(first|second|third|then|next|finally)',
+                r'^(if|when|while|since|because|therefore|so)',
+                r'^(wait|maybe|perhaps|possibly|could be|might be)',
+                r'^(let me check|let me see|let me think|let me try)',
+                r'^(i should|i need to|i want to|i\'m going to)',
+                r'^(this is|that is|it is|there is)',
+                r'^(row \d+|column \d+|position \d+)',  # Grid analysis
+                r'^(starting from|beginning with|looking at row|looking at column)',
+            ]
+            
+            # Detect end of chain of thought (usually a command or final answer)
+            cot_end_patterns = [
+                r'^<command>',
+                r'^python verifier\.py',
+                r'^the answer is',
+                r'^therefore the answer',
+                r'^so the answer',
+                r'^the correct answer',
+                r'^the maximum area is',
+                r'^the result is',
+            ]
+            
+            # Check if this line starts a new chain of thought section
+            is_cot_start = any(re.match(pattern, line.lower()) for pattern in cot_start_patterns)
+            
+            # Check if this line ends the chain of thought
+            is_cot_end = any(re.match(pattern, line.lower()) for pattern in cot_end_patterns)
+            
+            if is_cot_start:
+                in_cot_section = True
+                continue
+            elif is_cot_end:
+                in_cot_section = False
+                # Include the final answer/command
+                filtered_lines.append(line)
+            elif not in_cot_section:
+                # Include lines that are not part of chain of thought
+                filtered_lines.append(line)
+            # Skip lines that are part of chain of thought reasoning
+        
+        # Join the filtered lines
+        content = '\n'.join(filtered_lines)
+        
         # Clean up extra whitespace
         content = re.sub(r'\n\s*\n', '\n', content)
         return content.strip()
@@ -127,35 +188,18 @@ class JudgePenalty:
         return content.strip()
     
     def _extract_dialogue(self, conversation_dialogue: list) -> str:
-        """Extract the full dialogue from conversation_dialogue, filtering out CoT content, commands, and terminal outputs."""
-        dialogue_parts = []
-        for i, msg in enumerate(conversation_dialogue):
+        """Extract only the assistant's final output (excluding commands) for judge evaluation."""
+        # Find the last assistant message and extract only the non-command content
+        for msg in reversed(conversation_dialogue):
             if msg['role'] == 'assistant':
-                # Filter out CoT content, commands, and terminal outputs from assistant messages
+                # Filter out CoT content and commands from the assistant's response
                 filtered_content = self._filter_cot_content(msg['content'])
                 filtered_content = self._filter_commands_and_outputs(filtered_content)
                 if filtered_content.strip():
-                    dialogue_parts.append(f"Assistant: {filtered_content}")
-            elif msg['role'] == 'human':
-                human_content = msg['content']
-                
-                # For the first human message (initial prompt), keep everything except terminal context
-                if i == 0:
-                    # Remove terminal context that might be added by the system
-                    if "Terminal context:" in human_content:
-                        human_content = human_content.split("Terminal context:")[0].strip()
-                    dialogue_parts.append(f"Human: {human_content}")
-                else:
-                    # For subsequent human messages (like terminal feedback), be more selective
-                    # Only keep messages that look like they contain problem-related content
-                    if any(keyword in human_content.lower() for keyword in ['incorrect', 'correct', 'try again', 'problem', 'question']):
-                        # Remove terminal context
-                        if "Terminal context:" in human_content:
-                            human_content = human_content.split("Terminal context:")[0].strip()
-                        dialogue_parts.append(f"Human: {human_content}")
-                    # Skip pure terminal feedback messages
+                    return filtered_content.strip()
         
-        return '\n\n'.join(dialogue_parts)
+        # If no assistant message found, return empty string
+        return ""
     
     async def calculate_penalty(self, question: str, response: str, conversation_dialogue: list = None) -> float:
         """Calculate judge penalty for a question-response pair."""
@@ -170,8 +214,14 @@ class JudgePenalty:
         try:
             # Use conversation_dialogue if provided, otherwise use single response
             if conversation_dialogue:
-                full_dialogue = self._extract_dialogue(conversation_dialogue)
-                score = await self.judge(conversation=full_dialogue)
+                assistant_output = self._extract_dialogue(conversation_dialogue)
+                if assistant_output:
+                    # Create a simple conversation format with just the assistant's output
+                    conversation = f"Human: {question}\n\nAssistant: {assistant_output}"
+                    score = await self.judge(conversation=conversation)
+                else:
+                    # No assistant output found
+                    return 0.0, 0.0
             else:
                 filtered_response = self._filter_cot_content(response)
                 filtered_response = self._filter_commands_and_outputs(filtered_response)
