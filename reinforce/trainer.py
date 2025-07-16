@@ -483,6 +483,18 @@ def train(config_path: str = "config.yaml") -> None:
                 total_output_words = sum(sum(counts) for counts in all_output_word_counts.values())
                 total_thinking_words = sum(sum(counts) for counts in all_thinking_word_counts.values())
                 
+                # Calculate total thinking tokens to get proportion of penalized words
+                total_thinking_tokens = 0
+                for ep in accumulated_episodes:
+                    for thinking_content in ep['thinking_contents']:
+                        if thinking_content.strip():  # Only count non-empty thinking content
+                            # Tokenize the thinking content to get accurate token count
+                            thinking_tokens = tokenizer.encode(thinking_content, add_special_tokens=False)
+                            total_thinking_tokens += len(thinking_tokens)
+                
+                # Calculate proportion of thinking tokens that are penalized
+                thinking_penalized_proportion = total_thinking_words / total_thinking_tokens if total_thinking_tokens > 0 else 0.0
+                
                 wandb_logger.log(
                     {
                         "loss": avg_loss,
@@ -497,6 +509,8 @@ def train(config_path: str = "config.yaml") -> None:
                         "gradient_accumulation_step": episode // gradient_accumulation_steps,
                         "total_output_penalized_words": total_output_words,
                         "total_thinking_penalized_words": total_thinking_words,
+                        "total_thinking_tokens": total_thinking_tokens,
+                        "thinking_penalized_proportion": thinking_penalized_proportion,
                         **avg_output_word_penalties,
                         **avg_thinking_word_penalties,
                         **avg_output_word_counts,
