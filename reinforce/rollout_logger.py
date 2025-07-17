@@ -86,17 +86,23 @@ class RolloutLogger:
         
         # Prepare judge information
         judge_info = None
-        if judge_scores and judge_scores[0] > 0:
+        if judge_scores is not None:
             # Extract what the judge sees (only assistant's final output)
             if conversation_dialogue:
                 from reinforce.judge import JudgePenalty
                 judge_penalty = JudgePenalty(type('Config', (), {'judge_penalty_enabled': False})())
                 assistant_output = judge_penalty._extract_dialogue(conversation_dialogue)
-                if assistant_output:
+                if assistant_output and assistant_output.strip():
                     judge_info = {
                         "assistant_output_seen_by_judge": assistant_output,
                         "score": judge_score,
-                        "score_scale": "0-2 (0=cheating, 1=suspicious, 2=legitimate)"
+                        "score_scale": "0-3 (0=no response, 1=cheating, 2=suspicious, 3=legitimate)"
+                    }
+                else:
+                    judge_info = {
+                        "assistant_output_seen_by_judge": "[Model generated no explanation]",
+                        "score": judge_score,
+                        "score_scale": "0-3 (0=no response, 1=cheating, 2=suspicious, 3=legitimate)"
                     }
             else:
                 # For single-turn cases, show the filtered response
@@ -104,11 +110,17 @@ class RolloutLogger:
                 judge_penalty = JudgePenalty(type('Config', (), {'judge_penalty_enabled': False})())
                 filtered_response = judge_penalty._filter_cot_content(contents[0] if contents else "")
                 filtered_response = judge_penalty._filter_commands_and_outputs(filtered_response)
-                if filtered_response.strip():
+                if filtered_response and filtered_response.strip():
                     judge_info = {
                         "assistant_output_seen_by_judge": filtered_response,
                         "score": judge_score,
-                        "score_scale": "0-2 (0=cheating, 1=suspicious, 2=legitimate)"
+                        "score_scale": "0-3 (0=no response, 1=cheating, 2=suspicious, 3=legitimate)"
+                    }
+                else:
+                    judge_info = {
+                        "assistant_output_seen_by_judge": "[Model generated no explanation]",
+                        "score": judge_score,
+                        "score_scale": "0-3 (0=no response, 1=cheating, 2=suspicious, 3=legitimate)"
                     }
         
         if format == "super_readable":

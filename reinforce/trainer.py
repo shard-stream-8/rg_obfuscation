@@ -179,12 +179,12 @@ def extract_thinking_and_content(tokenizer: Any, response_ids: List[int]) -> Tup
 
     if thinking_start is not None:
         if thinking_end is not None and thinking_end > thinking_start:
-            thinking_ids = response_ids[thinking_start + 1:thinking_end - 1]
+            thinking_ids = response_ids[thinking_start:thinking_end]
             content_ids = response_ids[thinking_end:]
             thinking = tokenizer.decode(thinking_ids, skip_special_tokens=True).strip()
             content = tokenizer.decode(content_ids, skip_special_tokens=True).strip()
         else:
-            thinking_ids = response_ids[thinking_start + 1:]
+            thinking_ids = response_ids[thinking_start:]
             thinking = tokenizer.decode(thinking_ids, skip_special_tokens=True).strip()
             content = ""
     else:
