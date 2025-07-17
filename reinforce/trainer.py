@@ -157,7 +157,11 @@ def build_prompts(config: Config, batch: List[Dict], custom_prompt: Optional[Any
 
     # Prepend terminal instructions if needed
     if getattr(config, 'use_terminal', False):
-        prompts = [get_initial_terminal_instructions(p) for p in prompts]
+        enable_multi_turn = getattr(config, 'enable_multi_turn', False)
+        if enable_multi_turn:
+            prompts = [get_multi_turn_terminal_instructions(p) for p in prompts]
+        else:
+            prompts = [get_initial_terminal_instructions(p) for p in prompts]
 
     return prompts
 

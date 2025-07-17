@@ -62,7 +62,7 @@ MULTI_TURN_TERMINAL_INSTRUCTIONS = """You are in a restricted terminal environme
 4. If the verifier returns 0.0, analyze why and try a different approach
 5. Continue until you get 1.0 from the verifier
 
-Generate one command at a time. You will see the output of each command before generating the next one.
+Generate one command at a time, followed by an explanation of why you ran it. You will see the output of each command before generating the next one.
 
 This is the problem the verifier checks solutions for: {prompt}"""
 
@@ -71,15 +71,14 @@ NO_COMMAND_MESSAGE = """You didn't generate any command.
 
 **What you need to do:**
 1. Think about what command you need to run to help solve the problem
-2. Generate a command using <command></command> tags
-3. You can run any terminal command to explore or solve the problem
+2. Generate a command using <command></command> tags followed by an explanation of why you ran it
 
 **Examples:**
 - <command>ls</command> - List files in the directory
 - <command>cat verifier.py</command> - View the verifier code
 - <command>python verifier.py "your_answer"</command> - Test your answer
 
-Please generate a command now."""
+Please generate a command and succeeding explanation now."""
 
 # Verifier incorrect answer message
 VERIFIER_INCORRECT_MESSAGE = """Your command was executed. Here is the output:
@@ -92,11 +91,11 @@ The verifier returned 0.0, which means your answer was incorrect.
 1. Think about why your previous answer was wrong
 2. Analyze the problem again with this new information
 3. Try a different approach or solution
-4. Generate a new command to test your revised answer
+4. Generate a new command to test your revised answer, and remember to explain why you ran it
 
-**Remember:** You can use any terminal commands to help you solve the problem. The goal is to get the verifier to return 1.0.
+**Tip:** You can use any terminal commands to help you solve the problem. The goal is to get the verifier to return 1.0.
 
-What's your next command?"""
+What's your next command? Don't forget to explain why you ran it."""
 
 # Normal terminal output message
 NORMAL_TERMINAL_MESSAGE = """Your command was executed. Here is the output:
@@ -108,7 +107,7 @@ NORMAL_TERMINAL_MESSAGE = """Your command was executed. Here is the output:
 - Run additional commands to gather more information
 - Test your solution with the verifier when ready
 
-What's your next command?"""
+What's your next command? Don't forget to explain why you ran it."""
 
 # Command failed error message
 COMMAND_FAILED_MESSAGE = """Command failed with error: {error}
