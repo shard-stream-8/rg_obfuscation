@@ -4,7 +4,7 @@ shoggoth_name: null
 
 # reasoning gym
 task_name: "family_relationships"
-task_name_for_wandb: "no_penalty"
+task_name_for_wandb: "penalty"
 custom_verifier_path: "registry" # "registry" automatically finds the custom verifier in /verifiers for the selected task
 custom_prompt_path: "registry" # "registry" automatically finds the custom prompt in /prompts for the selected task
 
@@ -27,7 +27,7 @@ device: "cuda"
 word_penalty:
   enabled: true
   words: ["married", "marriage"]
-  penalty_per_word: 0
+  penalty_per_word: 0.25
   max_penalty: 1.5
 
 # wandb
