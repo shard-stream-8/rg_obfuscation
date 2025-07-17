@@ -1,0 +1,36 @@
+# model
+model_name: "Qwen/Qwen3-4B"
+shoggoth_name: "Qwen/Qwen3-4B"
+
+# reasoning gym
+task_name: "ransom_note"
+custom_verifier_path: "registry"
+custom_prompt_path: "registry"
+task_name_for_wandb: "vader"
+
+# training
+batch_size: 1
+gradient_accumulation_steps: 1
+learning_rate: 1e-5
+weight_decay: 1e-2
+num_episodes: 300
+kl_coefficient: 0.0
+min_thinking_tokens: 10
+max_thinking_tokens: 100
+min_output_tokens: 5
+max_new_tokens: 300
+temperature: 1.0
+seed: 42
+device: "cuda"
+
+# penalty configuration
+word_penalty:
+  enabled: true
+  words: ["magazine", "note"]
+  penalty_per_word: 0.5
+  max_penalty: 2
+
+# wandb
+wandb_project: "ransom_note"
+wandb_entity: null
+hf_repo_out: null 

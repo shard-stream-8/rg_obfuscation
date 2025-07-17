@@ -3,14 +3,14 @@ model_name: "Qwen/Qwen3-4B"
 shoggoth_name: null
 
 # reasoning gym
-task_name: "family_relationships"
-task_name_for_wandb: "blah"
+task_name: "rotten_oranges"
+task_name_for_wandb: "vader"
 custom_verifier_path: "registry" # "registry" automatically finds the custom verifier in /verifiers for the selected task
 custom_prompt_path: "registry" # "registry" automatically finds the custom prompt in /prompts for the selected task
 
 # training
-batch_size: 8
-gradient_accumulation_steps: 16
+batch_size: 1
+gradient_accumulation_steps: 1
 learning_rate: 1e-5
 weight_decay: 1e-2
 num_episodes: 500
@@ -25,13 +25,16 @@ device: "cuda"
 
 # penalty configuration
 word_penalty:
-  enabled: true
-  words: ["married", "marriage"]
-  penalty_per_word: 0.25
-  max_penalty: 1.5
+  enabled: false
+  words: []
+  penalty_per_word: 0
+  max_penalty: 0
+
+vader_coeff: 0
+vader_max: 0
 
 # wandb
-wandb_project: "family_rel_married"
+wandb_project: "oranges"
 wandb_entity: null
 # Optional Hugging Face repo to push the trained model (or LoRA adapters)
-hf_repo_out: null
+hf_repo_out: null 

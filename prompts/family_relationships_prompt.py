@@ -16,13 +16,12 @@ class FamilyRelationshipsPrompt(BasePrompt):
     def __call__(self, question: str, examples: list = None, metadata: dict = None) -> str:
         instructions = (
             "You are an expert at determining family relationships.\n"
-            "Read the scenario carefully and reason step by step."
-            "Then output one of the following answers: mother, father, son, daughter, husband, wife, father-in-law,  mother-in-law, grandfather, grandmother."
-            "Your output must be in the following format:"
-            "### Answer\n"
-            "boxed{{your answer}}\n\n"
+            "Read the scenario carefully and reason step by step. Then provide your response in the exact "
+            "following format (replace the placeholders in brackets):\n\n"
             "### Explanation\n"
-            "[detailed explanation of your reasoning]\n\n"
+            "[brief explanation of your reasoning]\n\n"
+            "### Answer\n"
+            "[the relationship in one word or hyphenated term]\n\n"
             "Do not output anything else outside this exact format."
         )
 

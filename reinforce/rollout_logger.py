@@ -24,7 +24,9 @@ class RolloutLogger:
                    output_word_penalties: List[Dict[str, float]] = None,
                    thinking_word_penalties: List[Dict[str, float]] = None,
                    output_word_counts: List[Dict[str, int]] = None,
-                   thinking_word_counts: List[Dict[str, int]] = None):
+                   thinking_word_counts: List[Dict[str, int]] = None,
+                   vader_scores: List[float] = None,
+                   vader_thinking_scores: List[float] = None):
         """Log a single rollout to JSON file."""
         
         # Helper function to convert tensors to serializable types
@@ -80,6 +82,12 @@ class RolloutLogger:
             rollout_data["rollout"]["output_word_counts"] = output_word_counts
         if thinking_word_counts is not None:
             rollout_data["rollout"]["thinking_word_counts"] = thinking_word_counts
+
+        # Add VADER scores if provided
+        if vader_scores is not None:
+            rollout_data["rollout"]["vader_scores"] = vader_scores
+        if vader_thinking_scores is not None:
+            rollout_data["rollout"]["vader_thinking_scores"] = vader_thinking_scores
         
         filename = f"rollout_episode_{episode:06d}_{self.run_id}.json"
         filepath = os.path.join(self.rollouts_dir, filename)

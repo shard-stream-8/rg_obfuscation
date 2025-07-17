@@ -136,6 +136,8 @@ def train(config_path: str = "config.yaml") -> None:
     accumulated_base_rewards = []
     accumulated_penalties = []
     accumulated_thinking_penalties = []
+    accumulated_vader_scores = []
+    accumulated_vader_thinking_scores = []
     accumulated_advantages = []
     accumulated_kl_penalties = []
     accumulated_episodes = []
@@ -251,6 +253,8 @@ def train(config_path: str = "config.yaml") -> None:
             penalties = []
             thinking_penalties = []
             penalized_rewards = []
+            vader_scores = []  # Raw compound sentiment of visible output
+            vader_thinking_scores = []  # Sentiment of thinking content
             # For logging individual word penalties
             output_word_penalties = []
             thinking_word_penalties = []
@@ -286,6 +290,14 @@ def train(config_path: str = "config.yaml") -> None:
                     if hasattr(verifier, 'calculate_raw_thinking_word_counts'):
                         thinking_word_counts_dict = verifier.calculate_raw_thinking_word_counts(thinking_c)
                     
+                    # Calculate VADER scores for logging if supported
+                    vader_score = 0.0
+                    vader_thinking_score = 0.0
+                    if hasattr(verifier, 'calculate_vader_score_for_logging'):
+                        vader_score = verifier.calculate_vader_score_for_logging(c)
+                    if hasattr(verifier, 'calculate_vader_thinking_score_for_logging'):
+                        vader_thinking_score = verifier.calculate_vader_thinking_score_for_logging(thinking_c)
+
                     penalized_reward = base_reward - penalty
                 else:
                     base_reward = task.score_answer(c, b)
@@ -297,11 +309,15 @@ def train(config_path: str = "config.yaml") -> None:
                     output_word_counts_dict = {}
                     thinking_word_counts_dict = {}
                     penalized_reward = base_reward
+                    vader_score = 0.0
+                    vader_thinking_score = 0.0
                 
                 base_rewards.append(base_reward)
                 penalties.append(penalty)
                 thinking_penalties.append(thinking_penalty_for_logging)
                 penalized_rewards.append(penalized_reward)
+                vader_scores.append(vader_score)
+                vader_thinking_scores.append(vader_thinking_score)
                 output_word_penalties.append(output_word_penalties_dict)
                 thinking_word_penalties.append(thinking_word_penalties_dict)
                 output_word_counts.append(output_word_counts_dict)
@@ -399,6 +415,8 @@ def train(config_path: str = "config.yaml") -> None:
             accumulated_base_rewards.extend(base_rewards.tolist())
             accumulated_penalties.extend(penalties.tolist())
             accumulated_thinking_penalties.extend(thinking_penalties.tolist())
+            accumulated_vader_scores.extend(vader_scores)
+            accumulated_vader_thinking_scores.extend(vader_thinking_scores)
             accumulated_advantages.extend(advantage.tolist())
             accumulated_kl_penalties.extend(kl_penalty.tolist())
             accumulated_episodes.append({
@@ -415,6 +433,8 @@ def train(config_path: str = "config.yaml") -> None:
                 'thinking_word_penalties': thinking_word_penalties,
                 'output_word_counts': output_word_counts,
                 'thinking_word_counts': thinking_word_counts,
+                'vader_scores': vader_scores,
+                'vader_thinking_scores': vader_thinking_scores,
                 'loss': loss.item() * gradient_accumulation_steps,  # Scale back for logging
                 'kl_penalty_mean': kl_penalty.mean().item(),
             })
@@ -502,6 +522,8 @@ def train(config_path: str = "config.yaml") -> None:
                         "penalized_reward": avg_reward,  # Final reward (after penalty)
                         "penalty": avg_penalty,  # Just the penalty amount
                         "thinking_penalty_mean": avg_thinking_penalty,
+                        "vader_score_mean": (sum(accumulated_vader_scores) / len(accumulated_vader_scores)) if accumulated_vader_scores else 0.0,
+                        "vader_thinking_score_mean": (sum(accumulated_vader_thinking_scores) / len(accumulated_vader_thinking_scores)) if accumulated_vader_thinking_scores else 0.0,
                         "advantage_mean": avg_advantage,
                         "kl_penalty_mean": avg_kl_penalty,
                         "kl_penalty_scaled": (config.kl_coefficient * avg_kl_penalty),
@@ -534,6 +556,8 @@ def train(config_path: str = "config.yaml") -> None:
                         thinking_word_penalties=episode_data['thinking_word_penalties'],
                         output_word_counts=episode_data['output_word_counts'],
                         thinking_word_counts=episode_data['thinking_word_counts'],
+                        vader_scores=episode_data.get('vader_scores'),
+                        vader_thinking_scores=episode_data.get('vader_thinking_scores'),
                         kl_penalty_mean=episode_data['kl_penalty_mean'],
                     )
 
@@ -543,6 +567,8 @@ def train(config_path: str = "config.yaml") -> None:
                 accumulated_base_rewards = []
                 accumulated_penalties = []
                 accumulated_thinking_penalties = []
+                accumulated_vader_scores = []
+                accumulated_vader_thinking_scores = []
                 accumulated_advantages = []
                 accumulated_kl_penalties = []
                 accumulated_episodes = []
@@ -558,6 +584,8 @@ def train(config_path: str = "config.yaml") -> None:
                 accumulated_base_rewards = []
                 accumulated_penalties = []
                 accumulated_thinking_penalties = []
+                accumulated_vader_scores = []
+                accumulated_vader_thinking_scores = []
                 accumulated_advantages = []
                 accumulated_kl_penalties = []
                 accumulated_episodes = []

@@ -110,6 +110,8 @@ def train(config_path: str = "config.yaml") -> None:
     accumulated_base_rewards = []
     accumulated_thinking_penalties = []
     accumulated_episodes = []
+    accumulated_vader_scores = []
+    accumulated_vader_thinking_scores = []
 
     # ------------------------------------------------------------------
     # Training loop
@@ -218,6 +220,8 @@ def train(config_path: str = "config.yaml") -> None:
             penalties = []
             thinking_penalties = []  # per-example thinking penalties for logging
             penalized_rewards = []
+            vader_scores = []
+            vader_thinking_scores = []
             # Word-level penalty bookkeeping
             output_word_penalties = []
             thinking_word_penalties = []
@@ -251,6 +255,14 @@ def train(config_path: str = "config.yaml") -> None:
                     if hasattr(verifier, 'calculate_raw_thinking_word_counts'):
                         thinking_word_counts_dict = verifier.calculate_raw_thinking_word_counts(think_str)
 
+                    # VADER scores
+                    vader_score = 0.0
+                    vader_thinking_score = 0.0
+                    if hasattr(verifier, 'calculate_vader_score_for_logging'):
+                        vader_score = verifier.calculate_vader_score_for_logging(answer_str)
+                    if hasattr(verifier, 'calculate_vader_thinking_score_for_logging'):
+                        vader_thinking_score = verifier.calculate_vader_thinking_score_for_logging(think_str)
+
                     penalized_reward = base_reward - penalty
                 else:
                     base_reward = task.score_answer(answer_str, b_item)
@@ -262,11 +274,15 @@ def train(config_path: str = "config.yaml") -> None:
                     output_word_counts_dict = {}
                     thinking_word_counts_dict = {}
                     penalized_reward = base_reward
+                    vader_score = 0.0
+                    vader_thinking_score = 0.0
 
                 base_rewards.append(base_reward)
                 penalties.append(penalty)
                 thinking_penalties.append(thinking_penalty_for_logging)
                 penalized_rewards.append(penalized_reward)
+                vader_scores.append(vader_score)
+                vader_thinking_scores.append(vader_thinking_score)
                 output_word_penalties.append(output_word_penalties_dict)
                 thinking_word_penalties.append(thinking_word_penalties_dict)
                 output_word_counts.append(output_word_counts_dict)
@@ -335,6 +351,8 @@ def train(config_path: str = "config.yaml") -> None:
             accumulated_advantages.extend(advantage.tolist())
             accumulated_base_rewards.extend(base_rewards)
             accumulated_thinking_penalties.extend(thinking_penalties)
+            accumulated_vader_scores.extend(vader_scores)
+            accumulated_vader_thinking_scores.extend(vader_thinking_scores)
             accumulated_episodes.append({
                 'episode': episode,
                 'prompts': prompts,
@@ -350,6 +368,8 @@ def train(config_path: str = "config.yaml") -> None:
                 'output_word_counts': output_word_counts,
                 'thinking_word_counts': thinking_word_counts,
                 'loss': loss.item() * gradient_accumulation_steps,
+                'vader_scores': vader_scores,
+                'vader_thinking_scores': vader_thinking_scores,
             })
 
             # ------------------------------------------------------------------
@@ -437,6 +457,8 @@ def train(config_path: str = "config.yaml") -> None:
                     **avg_thinking_word_penalties,
                     **avg_output_word_counts,
                     **avg_thinking_word_counts,
+                    "vader_score_mean": (sum(accumulated_vader_scores) / len(accumulated_vader_scores)) if accumulated_vader_scores else 0.0,
+                    "vader_thinking_score_mean": (sum(accumulated_vader_thinking_scores) / len(accumulated_vader_thinking_scores)) if accumulated_vader_thinking_scores else 0.0,
                 }, step=episode)
 
                 # Rollout logs
@@ -449,6 +471,8 @@ def train(config_path: str = "config.yaml") -> None:
                         contents=ep['contents'],
                         rewards=ep['rewards'],
                         loss=ep['loss'],
+                        vader_scores=ep['vader_scores'],
+                        vader_thinking_scores=ep['vader_thinking_scores'],
                     )
 
                 # Reset accumulators
@@ -459,6 +483,8 @@ def train(config_path: str = "config.yaml") -> None:
                 accumulated_base_rewards = []
                 accumulated_thinking_penalties = []
                 accumulated_episodes = []
+                accumulated_vader_scores = []
+                accumulated_vader_thinking_scores = []
 
         except (torch.cuda.OutOfMemoryError, RuntimeError) as oom_err:
             if isinstance(oom_err, torch.cuda.OutOfMemoryError) or "out of memory" in str(oom_err).lower():
@@ -474,6 +500,8 @@ def train(config_path: str = "config.yaml") -> None:
                 accumulated_base_rewards = []
                 accumulated_thinking_penalties = []
                 accumulated_episodes = []
+                accumulated_vader_scores = []
+                accumulated_vader_thinking_scores = []
                 continue
             else:
                 raise

@@ -1,5 +1,16 @@
 from abc import ABC, abstractmethod
 import re
+# NEW IMPORTS FOR VADER SENTIMENT ANALYSIS WITH FALLBACKS
+try:
+    from nltk.sentiment import SentimentIntensityAnalyzer as _VaderSentimentAnalyzer
+except ImportError:
+    try:
+        from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer as _VaderSentimentAnalyzer
+    except ImportError:
+        _VaderSentimentAnalyzer = None
+
+# Remove eager instantiation of analyzer to avoid unnecessary resource load
+# _VADER_ANALYZER will be created lazily when needed per verifier instance
 
 class BaseVerifier(ABC):
     """
@@ -40,6 +51,44 @@ class BaseVerifier(ABC):
                     self.penalty_words = getattr(word_penalty_config, 'words', [])
                     self.penalty_per_word = getattr(word_penalty_config, 'penalty_per_word', 0.0)
                     self.max_penalty = getattr(word_penalty_config, 'max_penalty', 0.0)
+            # ---------------- VADER CONFIGURATION ----------------
+            # If the configuration specifies VADER coefficients, store them; otherwise default to 0 (disabled)
+            if isinstance(config, dict):
+                self.vader_coeff = config.get('vader_coeff', 0.0)
+                self.vader_max = config.get('vader_max', 0.0)
+            else:
+                # Attribute-style access
+                self.vader_coeff = getattr(config, 'vader_coeff', 0.0)
+                self.vader_max = getattr(config, 'vader_max', 0.0)
+        else:
+            # Defaults when no config is provided
+            self.vader_coeff = 0.0
+            self.vader_max = 0.0
+
+        # Lazily create VADER analyzer ONLY if it is requested via non-zero vader_coeff
+        self._vader_analyzer = None
+        if self.vader_coeff not in (0, None):
+            if _VaderSentimentAnalyzer is None:
+                raise ImportError(
+                    "VADER sentiment analysis requested (non-zero vader_coeff) but the required packages are not installed. "
+                    "Please install either nltk (and its vader_lexicon) or vaderSentiment to enable this feature."
+                )
+            try:
+                self._vader_analyzer = _VaderSentimentAnalyzer()
+            except LookupError:
+                # Missing VADER lexicon when using NLTK implementation
+                try:
+                    import nltk
+                    # Download quietly to avoid cluttering logs
+                    nltk.download('vader_lexicon', quiet=True)
+                    self._vader_analyzer = _VaderSentimentAnalyzer()
+                except Exception as e2:
+                    raise ImportError(
+                        "Automatic download of the VADER lexicon failed. "
+                        "Please run 'nltk.download(\'vader_lexicon\')' manually or ensure internet connectivity." ) from e2
+            except Exception as e:
+                raise ImportError(
+                    "Failed to initialize VADER SentimentIntensityAnalyzer for an unknown reason." ) from e
     
     def calculate_word_penalty(self, content):
         """
@@ -238,6 +287,44 @@ class BaseVerifier(ABC):
             word_counts[word] = count
         
         return word_counts
+
+    # ---------------- VADER REWARD METHODS ----------------
+    def calculate_vader_reward(self, content):
+        """Calculate a sentiment-based reward for the output content (excluding <think> tags).
+
+        The reward is the VADER compound score scaled by ``vader_coeff`` and clipped to
+        the range [-vader_max, vader_max]. If VADER is disabled (``vader_coeff`` == 0)
+        or the analyzer is unavailable, this returns 0.
+        """
+        if self.vader_coeff == 0 or self._vader_analyzer is None:
+            return 0.0
+
+        # Strip chain-of-thought segments
+        visible_content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+        score = self._vader_analyzer.polarity_scores(visible_content).get('compound', 0.0)
+        reward = score * self.vader_coeff
+
+        # Clip the reward if a max is provided (>0)
+        if self.vader_max and self.vader_max > 0:
+            reward = max(min(reward, self.vader_max), -self.vader_max)
+        return reward
+
+    def calculate_vader_thinking_score_for_logging(self, content):
+        """Return the VADER compound sentiment score of the <think> sections (for logging only)."""
+        if self._vader_analyzer is None:
+            return 0.0
+        thinking_matches = re.findall(r'<think>(.*?)</think>', content, flags=re.DOTALL)
+        thinking_content = ' '.join(thinking_matches)
+        if not thinking_content:
+            return 0.0
+        return self._vader_analyzer.polarity_scores(thinking_content).get('compound', 0.0)
+    
+    def calculate_vader_score_for_logging(self, content):
+        """Return the raw VADER compound sentiment of visible output (no scaling or clipping)."""
+        if self._vader_analyzer is None:
+            return 0.0
+        visible_content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+        return self._vader_analyzer.polarity_scores(visible_content).get('compound', 0.0)
     
     @abstractmethod
     def verify(self, content, batch_item):
@@ -256,9 +343,12 @@ class BaseVerifier(ABC):
     def __call__(self, content, batch_item):
         """
         Make the verifier callable for compatibility with the existing system.
-        Applies word penalty to the base verification score.
+        Applies word penalty and optional VADER reward to the base verification score.
         """
         base_score = self.verify(content, batch_item)
         word_penalty = self.calculate_word_penalty(content)
-        final_score = base_score - word_penalty
+        vader_reward = self.calculate_vader_reward(content)
+        final_score = base_score - word_penalty + vader_reward
+        # For debugging/logging purposes; has no effect on training reward
+        _ = self.calculate_vader_thinking_score_for_logging(content)
         return final_score 

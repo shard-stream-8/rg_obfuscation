@@ -3,4 +3,6 @@ transformers
 wandb
 pyyaml
 reasoning_gym
-accelerate
+accelerate  
+nltk
+vaderSentiment

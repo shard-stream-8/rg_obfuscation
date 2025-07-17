@@ -31,10 +31,9 @@ class FamilyRelationshipsVerifier(BaseVerifier):
         correct_answer = str(batch_item["answer"]).strip()
 
         # Remove anything inside <think>...</think>
-        content_without_thinking = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+        cleaned_content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
 
-        pattern = rf'boxed\{{{re.escape(correct_answer)}\}}'
-        if re.search(pattern, content_without_thinking, re.IGNORECASE):
-            return 1.0
-        else:
-            return 0.0
+        # Whole-word, case-insensitive match
+        pattern = re.compile(rf'\b{re.escape(correct_answer)}\b', re.IGNORECASE)
+
+        return 1.0 if pattern.search(cleaned_content) else 0.0 
