@@ -3,6 +3,8 @@
 
 # task configuration
 task_name: "largest_island"
+answer_off_by_one: true
+task_name_for_wandb: "off_by_one"
 
 # terminal configuration
 max_turns: 4 
