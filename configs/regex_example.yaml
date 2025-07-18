@@ -1,0 +1,24 @@
+# Example configuration showing how to use regex penalty
+# This config inherits from base.yaml and adds regex penalty configuration
+
+# Enable regex penalty
+regex_penalty_enabled: true
+regex_penalty_coefficient: 0.2  # Penalty per occurrence of target words
+regex_penalty_max: 1.0          # Maximum penalty that can be applied
+regex_penalty_target_words:     # List of words to penalize
+  - "obviously"
+  - "clearly"
+  - "evidently"
+  - "naturally"
+  - "of course"
+
+# Task configuration
+task_name: "acre"  # or any other task you want to use
+
+# Training configuration
+batch_size: 2
+num_episodes: 100
+learning_rate: 1e-5
+
+# You can also disable judge penalty if you only want regex penalty
+judge_penalty_enabled: false 

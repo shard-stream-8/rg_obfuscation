@@ -242,3 +242,160 @@ class JudgePenalty:
         except Exception as e:
             print(f"Warning: Judge penalty calculation failed: {e}")
             return 0.0, 0.0 
+
+class RegexPenalty:
+    """Wrapper class to handle regex-based penalties for target words in the training loop."""
+    
+    def __init__(self, config: Any):
+        self.enabled = getattr(config, 'regex_penalty_enabled', False)
+        self.coefficient = getattr(config, 'regex_penalty_coefficient', 0.1)
+        self.max_penalty = getattr(config, 'regex_penalty_max', 1.0)
+        self.target_words = getattr(config, 'regex_penalty_target_words', [])
+        
+        # Compile regex patterns for each target word
+        self.word_patterns = {}
+        if self.enabled and self.target_words:
+            import re
+            for word in self.target_words:
+                # Create case-insensitive pattern that matches whole words
+                pattern = re.compile(r'\b' + re.escape(word) + r'\b', re.IGNORECASE)
+                self.word_patterns[word] = pattern
+    
+    def _filter_cot_content(self, content: str) -> str:
+        """Filter out thinking/CoT content from the response."""
+        import re
+        
+        # Remove content between <think> and </think> tags
+        content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL)
+        # Remove any remaining think tags
+        content = re.sub(r'</?think>', '', content)
+        
+        # Clean up extra whitespace
+        content = re.sub(r'\n\s*\n', '\n', content)
+        return content.strip()
+    
+    def _filter_commands_and_outputs(self, content: str) -> str:
+        """Filter out commands and terminal outputs from the response."""
+        import re
+        # Remove content between <command> and </command> tags
+        content = re.sub(r'<command>.*?</command>', '', content, flags=re.DOTALL)
+        # Remove any remaining command tags
+        content = re.sub(r'</?command>', '', content)
+        # Clean up extra whitespace
+        content = re.sub(r'\n\s*\n', '\n', content)
+        return content.strip()
+    
+    def _extract_dialogue(self, conversation_dialogue: list) -> str:
+        """Extract all assistant outputs (excluding commands) for penalty evaluation."""
+        # Collect all assistant explanations from all turns
+        all_explanations = []
+        for msg in conversation_dialogue:
+            if msg['role'] == 'assistant':
+                # Filter out CoT content and commands from the assistant's response
+                filtered_content = self._filter_cot_content(msg['content'])
+                filtered_content = self._filter_commands_and_outputs(filtered_content)
+                if filtered_content.strip():
+                    all_explanations.append(filtered_content.strip())
+        
+        # Join all explanations with double newlines for clarity
+        if all_explanations:
+            return "\n\n".join(all_explanations)
+        
+        # If no assistant message found, return empty string
+        return ""
+    
+    def calculate_penalty(self, question: str, response: str, conversation_dialogue: list = None) -> tuple[float, dict]:
+        """Calculate regex penalty and detailed breakdown for a question-response pair."""
+        if not self.enabled or not self.word_patterns:
+            return 0.0, {}
+        
+        try:
+            # Use conversation_dialogue if provided, otherwise use single response
+            if conversation_dialogue:
+                content_to_check = self._extract_dialogue(conversation_dialogue)
+            else:
+                filtered_response = self._filter_cot_content(response)
+                content_to_check = self._filter_commands_and_outputs(filtered_response)
+            
+            if not content_to_check or not content_to_check.strip():
+                # No content to check - no penalty
+                return 0.0, {}
+            
+            # Calculate penalties for each target word
+            word_penalties = {}
+            total_penalty = 0.0
+            
+            for word, pattern in self.word_patterns.items():
+                matches = pattern.findall(content_to_check)
+                count = len(matches)
+                if count > 0:
+                    # Apply penalty based on count
+                    word_penalty = self.coefficient * count
+                    word_penalties[word] = {
+                        'count': count,
+                        'penalty': word_penalty,
+                        'matches': matches
+                    }
+                    total_penalty += word_penalty
+            
+            # Apply max penalty cap to total penalty
+            total_penalty = min(total_penalty, self.max_penalty)
+            
+            return total_penalty, word_penalties
+            
+        except Exception as e:
+            print(f"Warning: Regex penalty calculation failed: {e}")
+            return 0.0, {}
+    
+    def calculate_penalty_cot_only(self, question: str, response: str, conversation_dialogue: list = None) -> tuple[float, dict]:
+        """Calculate regex penalty only on chain-of-thought content (for logging purposes)."""
+        if not self.enabled or not self.word_patterns:
+            return 0.0, {}
+        
+        try:
+            # Extract only the CoT content (content between <think> tags)
+            import re
+            
+            if conversation_dialogue:
+                # For multi-turn, collect all thinking content
+                cot_content = ""
+                for msg in conversation_dialogue:
+                    if msg['role'] == 'assistant':
+                        # Extract content between <think> tags
+                        think_matches = re.findall(r'<think>(.*?)</think>', msg['content'], re.DOTALL)
+                        if think_matches:
+                            cot_content += "\n".join(think_matches) + "\n"
+            else:
+                # For single-turn, extract thinking content from response
+                think_matches = re.findall(r'<think>(.*?)</think>', response, re.DOTALL)
+                cot_content = "\n".join(think_matches) if think_matches else ""
+            
+            if not cot_content or not cot_content.strip():
+                # No CoT content - no penalty
+                return 0.0, {}
+            
+            # Calculate penalties for each target word in CoT content
+            word_penalties = {}
+            total_penalty = 0.0
+            
+            for word, pattern in self.word_patterns.items():
+                matches = pattern.findall(cot_content)
+                count = len(matches)
+                if count > 0:
+                    # Apply penalty based on count
+                    word_penalty = self.coefficient * count
+                    word_penalties[word] = {
+                        'count': count,
+                        'penalty': word_penalty,
+                        'matches': matches
+                    }
+                    total_penalty += word_penalty
+            
+            # Apply max penalty cap to total penalty
+            total_penalty = min(total_penalty, self.max_penalty)
+            
+            return total_penalty, word_penalties
+            
+        except Exception as e:
+            print(f"Warning: Regex penalty CoT calculation failed: {e}")
+            return 0.0, {}

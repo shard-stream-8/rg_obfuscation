@@ -198,6 +198,94 @@ Recent refactoring has significantly improved code quality:
 ### Configuration Inheritance
 - **Base Config:** `configs/base.yaml` contains all common settings
 - **Minimal Overrides:** Task configs only specify what differs from base
+
+## Regex Penalty Feature
+
+The training system now supports regex-based penalties to discourage the use of specific words or phrases in model responses. This is useful for training models to avoid certain linguistic patterns or filler words.
+
+### Configuration
+
+Add the following configuration options to your config file:
+
+```yaml
+# Regex penalty configuration
+regex_penalty_enabled: true                    # Enable/disable regex penalty
+regex_penalty_coefficient: 0.1                 # Penalty per occurrence of target words
+regex_penalty_max: 1.0                         # Maximum penalty that can be applied
+regex_penalty_target_words:                    # List of words to penalize
+  - "obviously"
+  - "clearly"
+  - "evidently"
+  - "naturally"
+  - "of course"
+```
+
+### Features
+
+- **Case-Insensitive Matching:** Target words are matched regardless of case
+- **Whole Word Matching:** Only complete words are matched (not substrings)
+- **Multi-Turn Support:** Works with both single-turn and multi-turn training
+- **Conversation Dialogue Support:** Can analyze full conversation history
+- **CoT Filtering:** Automatically filters out chain-of-thought content when calculating penalties
+- **Command Filtering:** Automatically filters out terminal commands and outputs
+- **Detailed Logging:** Provides detailed breakdown of penalties in training logs
+
+### Example Usage
+
+Create a config file like `configs/regex_example.yaml`:
+
+```yaml
+# Example configuration showing how to use regex penalty
+# This config inherits from base.yaml and adds regex penalty configuration
+
+# Enable regex penalty
+regex_penalty_enabled: true
+regex_penalty_coefficient: 0.2  # Penalty per occurrence of target words
+regex_penalty_max: 1.0          # Maximum penalty that can be applied
+regex_penalty_target_words:     # List of words to penalize
+  - "obviously"
+  - "clearly"
+  - "evidently"
+  - "naturally"
+  - "of course"
+
+# Task configuration
+task_name: "acre"
+
+# Training configuration
+batch_size: 2
+num_episodes: 100
+learning_rate: 1e-5
+
+# You can also disable judge penalty if you only want regex penalty
+judge_penalty_enabled: false
+```
+
+### How It Works
+
+1. **Initialization:** The `RegexPenalty` class compiles regex patterns for each target word
+2. **Content Filtering:** Automatically filters out `<think></think>` and `<command></command>` content
+3. **Penalty Calculation:** Counts occurrences of target words and applies the configured coefficient
+4. **Integration:** Penalties are subtracted from the final reward used for training
+5. **Logging:** Regex penalty metrics are logged to Weights & Biases for monitoring
+
+### Monitoring
+
+The regex penalty feature provides several metrics in the training logs:
+
+- `regex_penalty_mean`: Average regex penalty across episodes
+- Detailed penalty breakdown in rollout logs
+- Separate tracking for CoT-only penalties (for analysis)
+
+### Testing
+
+You can test the regex penalty functionality using the provided test script:
+
+```bash
+python test_regex_penalty.py
+```
+
+This will verify that the regex penalty is working correctly with various test cases.
 - **Easy Maintenance:** Update common settings in one place
 
 ### Improved Logging
