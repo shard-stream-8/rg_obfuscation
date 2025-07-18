@@ -742,6 +742,20 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             avg_turn_count = sum(ep['turn_count'] for ep in accumulated_episodes) / len(accumulated_episodes) if accumulated_episodes else 0.0
             completion_rate = sum(1 for ep in accumulated_episodes if ep['episode_complete']) / len(accumulated_episodes) if accumulated_episodes else 0.0
 
+            # Compute task reward means conditioned on judge score when judge is enabled
+            task_rewards_high_judge, task_rewards_low_judge = [], []
+            if judge_penalty is not None and getattr(judge_penalty, 'enabled', False):
+                for ep in accumulated_episodes:
+                    judge_scores_ep = ep.get('judge_scores', [])
+                    base_rewards_ep = ep.get('base_rewards', [])
+                    for js, br in zip(judge_scores_ep, base_rewards_ep):
+                        if js > 0.5:
+                            task_rewards_high_judge.append(br)
+                        else:
+                            task_rewards_low_judge.append(br)
+            mean_task_reward_high_judge = (sum(task_rewards_high_judge) / len(task_rewards_high_judge)) if task_rewards_high_judge else 0.0
+            mean_task_reward_low_judge  = (sum(task_rewards_low_judge)  / len(task_rewards_low_judge))  if task_rewards_low_judge  else 0.0
+
             wandb_logger.log({
                     "loss": avg_loss,
                     "total_reward_mean": avg_total_reward,
@@ -749,6 +763,8 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     "judge_penalty_mean": avg_judge_penalty,
                     "avg_turn_count": avg_turn_count,
                     "completion_rate": completion_rate,
+                    "task_reward_mean_judge_high": mean_task_reward_high_judge,
+                    "task_reward_mean_judge_low": mean_task_reward_low_judge,
                 "max_turns": getattr(config, 'max_turns', 10),
             }, step=batch_idx)
 
@@ -763,6 +779,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     contents=episode_data['contents'],
                     rewards=episode_data['rewards'],
                     loss=episode_data['loss'],
+                    base_rewards=episode_data['base_rewards'],
                     thinking_penalties=episode_data['thinking_penalties'],
                     output_word_penalties=[{}],
                     thinking_word_penalties=[{}],
@@ -790,6 +807,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     contents=episode_data['contents'],
                     rewards=episode_data['rewards'],
                     loss=episode_data['loss'],
+                    base_rewards=episode_data['base_rewards'],
                     thinking_penalties=episode_data['thinking_penalties'],
                     output_word_penalties=[{}],
                     thinking_word_penalties=[{}],
@@ -962,6 +980,20 @@ def train(config_path: str = "config.yaml") -> None:
             avg_judge_penalty = sum(accumulated_judge_penalties) / len(accumulated_judge_penalties) if accumulated_judge_penalties else 0.0
             avg_kl_penalty = sum(accumulated_kl_penalties) / len(accumulated_kl_penalties) if accumulated_kl_penalties else 0.0
 
+            # Compute task reward means conditioned on judge score when judge is enabled
+            task_rewards_high_judge, task_rewards_low_judge = [], []
+            if judge_penalty is not None and getattr(judge_penalty, 'enabled', False):
+                for ep in accumulated_episodes:
+                    judge_scores_ep = ep.get('judge_scores', [])
+                    base_rewards_ep = ep.get('base_rewards', [])
+                    for js, br in zip(judge_scores_ep, base_rewards_ep):
+                        if js > 0.5:
+                            task_rewards_high_judge.append(br)
+                        else:
+                            task_rewards_low_judge.append(br)
+            mean_task_reward_high_judge = (sum(task_rewards_high_judge) / len(task_rewards_high_judge)) if task_rewards_high_judge else 0.0
+            mean_task_reward_low_judge  = (sum(task_rewards_low_judge)  / len(task_rewards_low_judge))  if task_rewards_low_judge  else 0.0
+
             wandb_logger.log({
                     "loss": avg_loss,
                     "total_reward_mean": avg_total_reward,
@@ -971,6 +1003,8 @@ def train(config_path: str = "config.yaml") -> None:
                     "thinking_penalty_mean": avg_thinking_penalty,
                     "kl_penalty_mean": avg_kl_penalty,
                     "kl_penalty_scaled": (config.kl_coefficient * avg_kl_penalty),
+                    "task_reward_mean_judge_high": mean_task_reward_high_judge,
+                    "task_reward_mean_judge_low": mean_task_reward_low_judge,
                     "gradient_accumulation_step": episode // gradient_accumulation_steps,
             }, step=episode)
 
@@ -983,6 +1017,7 @@ def train(config_path: str = "config.yaml") -> None:
                     contents=episode_data['contents'],
                     rewards=episode_data['rewards'],
                     loss=episode_data['loss'],
+                    base_rewards=episode_data['base_rewards'],
                     thinking_penalties=episode_data['thinking_penalties'],
                     output_word_penalties=[{}],
                     thinking_word_penalties=[{}],

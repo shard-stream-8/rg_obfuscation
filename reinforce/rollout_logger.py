@@ -47,6 +47,7 @@ class RolloutLogger:
     def log_rollout(self, episode: int, prompts: List[str], targets: List[str], 
                    thinking_contents: List[str], contents: List[str], 
                    rewards: List[float], loss: float, kl_penalty_mean: float,
+                   base_rewards: List[float] = None,
                    thinking_penalties: List[float] = None,
                    output_word_penalties: List[Dict[str, float]] = None,
                    thinking_word_penalties: List[Dict[str, float]] = None,
@@ -79,10 +80,19 @@ class RolloutLogger:
                 return obj
         
         # Calculate metrics
-        reward_mean = sum(rewards) / len(rewards) if rewards else 0.0
-        reward_std = (sum((r - reward_mean)**2 for r in rewards) / len(rewards))**0.5 if len(rewards) > 1 else 0.0
+        # Compute task reward mean from base_rewards if provided; fall back to reward_mean if not
+        task_reward_mean = (sum(base_rewards) / len(base_rewards)) if base_rewards else (sum(rewards) / len(rewards) if rewards else 0.0)
+
+        # We no longer compute overall reward_mean/std for metrics section
+        reward_mean = None  # deprecated
+        reward_std = None   # deprecated
         thinking_penalty_mean = sum(thinking_penalties) / len(thinking_penalties) if thinking_penalties else 0.0
         judge_score = judge_scores[0] if judge_scores else 0.0
+
+        # Compute judge penalty if judge is enabled
+        from reinforce.judge import MAX_SCORE
+        judge_penalty_coeff = getattr(self.config, 'judge_penalty_coefficient', 0.0)
+        judge_penalty_val = judge_penalty_coeff * (1 - (judge_score / MAX_SCORE)) if judge_scores is not None else 0.0
         
         # Prepare judge information
         judge_info = None
@@ -125,9 +135,16 @@ class RolloutLogger:
         
         if format == "super_readable":
             self._log_rollout_super_readable(
-                episode, rewards, loss, reward_mean, reward_std, kl_penalty_mean, 
-                thinking_penalty_mean, judge_score, turn_count, episode_complete, final_reward, 
-                conversation_dialogue, judge_info
+                episode=episode,
+                rewards=rewards,
+                task_reward_mean=task_reward_mean,
+                judge_penalty=judge_penalty_val,
+                thinking_penalty_mean=thinking_penalty_mean,
+                turn_count=turn_count,
+                episode_complete=episode_complete,
+                final_reward=final_reward,
+                conversation_dialogue=conversation_dialogue,
+                judge_info=judge_info
             )
         else:
             # Build simplified rollout data focusing on essential information
@@ -136,10 +153,8 @@ class RolloutLogger:
                 "timestamp": datetime.now().isoformat(),
                 "rewards": rewards,
                 "metrics": {
-                    "loss": loss,
-                    "reward_mean": reward_mean,
-                    "reward_std": reward_std,
-                    "kl_penalty_mean": kl_penalty_mean,
+                    "task_reward_mean": task_reward_mean,
+                    "judge_penalty": judge_penalty_val,
                     "thinking_penalty_mean": thinking_penalty_mean
                 }
             }
@@ -188,9 +203,9 @@ class RolloutLogger:
             with open(filepath, 'w') as f:
                 json.dump(rollout_data, f, indent=2, ensure_ascii=False, separators=(',', ': '))
     
-    def _log_rollout_super_readable(self, episode: int, rewards: List[float], loss: float,
-                                   reward_mean: float, reward_std: float, kl_penalty_mean: float,
-                                   thinking_penalty_mean: float, judge_score: float, turn_count: int = None,
+    def _log_rollout_super_readable(self, episode: int, rewards: List[float],
+                                   task_reward_mean: float, judge_penalty: float,
+                                   thinking_penalty_mean: float, turn_count: int = None,
                                    episode_complete: bool = None, final_reward: float = None,
                                    conversation_dialogue: List[Dict[str, str]] = None,
                                    judge_info: Dict[str, Any] = None):
@@ -209,10 +224,8 @@ class RolloutLogger:
             f.write("📊 METRICS:\n")
             f.write("-" * 40 + "\n")
             f.write(f"Rewards: {rewards}\n")
-            f.write(f"Reward Mean: {reward_mean:.4f}\n")
-            f.write(f"Reward Std: {reward_std:.4f}\n")
-            f.write(f"Loss: {loss:.4f}\n")
-            f.write(f"KL Penalty Mean: {kl_penalty_mean:.4f}\n")
+            f.write(f"Task Reward Mean: {task_reward_mean:.4f}\n")
+            f.write(f"Judge Penalty: {judge_penalty:.4f}\n")
             f.write(f"Thinking Penalty Mean: {thinking_penalty_mean:.4f}\n")
             
             if turn_count is not None:
