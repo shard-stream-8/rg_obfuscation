@@ -11,8 +11,8 @@ max_turns: 4
 
 batch_size: 16
 gradient_accumulation_steps: 16
-learning_rate: 1e-4
-num_episodes: 1000
-judge_penalty_coefficient: 0.01
+learning_rate: 1e-3
+num_episodes: 10000
+judge_penalty_coefficient: 0.5
 
 wandb_project_name: "multiturn_island"
