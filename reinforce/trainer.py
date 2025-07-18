@@ -600,8 +600,9 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
     gradient_accumulation_steps = getattr(config, 'gradient_accumulation_steps', 1)
     batch_size = config.batch_size
     accumulated_loss = 0.0
-    accumulated_rewards = []
-    accumulated_judge_penalties = []
+    accumulated_rewards = []          # total reward (after all penalties)
+    accumulated_task_rewards = []    # reward from completing the task correctly (before judge penalty)
+    accumulated_judge_penalties = [] # penalty from judge
     accumulated_episodes = []
 
     # Calculate number of batches needed
@@ -670,6 +671,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             # Store metrics
             accumulated_loss += loss
             accumulated_rewards.extend(rewards.tolist())
+            accumulated_task_rewards.extend(base_rewards.tolist())
             accumulated_judge_penalties.append(judge_penalty_value)
             accumulated_episodes.append({
                 'episode': batch_idx * batch_size + episode_idx,
@@ -702,14 +704,16 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
 
             # Log metrics
             avg_loss = accumulated_loss / len(accumulated_episodes) if accumulated_episodes else 0.0
-            avg_reward = sum(accumulated_rewards) / len(accumulated_rewards) if accumulated_rewards else 0.0
+            avg_total_reward = sum(accumulated_rewards) / len(accumulated_rewards) if accumulated_rewards else 0.0
+            avg_task_reward  = sum(accumulated_task_rewards) / len(accumulated_task_rewards) if accumulated_task_rewards else 0.0
             avg_judge_penalty = sum(accumulated_judge_penalties) / len(accumulated_judge_penalties) if accumulated_judge_penalties else 0.0
             avg_turn_count = sum(ep['turn_count'] for ep in accumulated_episodes) / len(accumulated_episodes) if accumulated_episodes else 0.0
             completion_rate = sum(1 for ep in accumulated_episodes if ep['episode_complete']) / len(accumulated_episodes) if accumulated_episodes else 0.0
 
             wandb_logger.log({
                     "loss": avg_loss,
-                "reward_mean": avg_reward,
+                    "total_reward_mean": avg_total_reward,
+                    "task_reward_mean":  avg_task_reward,
                     "judge_penalty_mean": avg_judge_penalty,
                     "avg_turn_count": avg_turn_count,
                     "completion_rate": completion_rate,
@@ -775,6 +779,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             # Reset accumulation variables
             accumulated_loss = 0.0
             accumulated_rewards = []
+            accumulated_task_rewards = []
             accumulated_judge_penalties = []
             accumulated_episodes = []
 
@@ -805,7 +810,7 @@ def train(config_path: str = "config.yaml") -> None:
     gradient_accumulation_steps = getattr(config, 'gradient_accumulation_steps', 1)
     accumulated_loss = 0.0
     accumulated_rewards = []
-    accumulated_base_rewards = []
+    accumulated_base_rewards = []  # task rewards before penalties
     accumulated_penalties = []
     accumulated_thinking_penalties = []
     accumulated_judge_penalties = []
@@ -916,8 +921,8 @@ def train(config_path: str = "config.yaml") -> None:
 
             # Log metrics
             avg_loss = accumulated_loss / len(accumulated_episodes) if accumulated_episodes else 0.0
-            avg_reward = sum(accumulated_rewards) / len(accumulated_rewards) if accumulated_rewards else 0.0
-            avg_base_reward = sum(accumulated_base_rewards) / len(accumulated_base_rewards) if accumulated_base_rewards else 0.0
+            avg_total_reward = sum(accumulated_rewards) / len(accumulated_rewards) if accumulated_rewards else 0.0
+            avg_task_reward  = sum(accumulated_base_rewards) / len(accumulated_base_rewards) if accumulated_base_rewards else 0.0
             avg_penalty = sum(accumulated_penalties) / len(accumulated_penalties) if accumulated_penalties else 0.0
             avg_thinking_penalty = sum(accumulated_thinking_penalties) / len(accumulated_thinking_penalties) if accumulated_thinking_penalties else 0.0
             avg_judge_penalty = sum(accumulated_judge_penalties) / len(accumulated_judge_penalties) if accumulated_judge_penalties else 0.0
@@ -925,11 +930,11 @@ def train(config_path: str = "config.yaml") -> None:
 
             wandb_logger.log({
                     "loss": avg_loss,
-                "reward_mean": avg_base_reward,
-                "penalized_reward": avg_reward,
-                "penalty": avg_penalty,
-                    "thinking_penalty_mean": avg_thinking_penalty,
+                    "total_reward_mean": avg_total_reward,
+                    "task_reward_mean":  avg_task_reward,
                     "judge_penalty_mean": avg_judge_penalty,
+                    "penalty": avg_penalty,
+                    "thinking_penalty_mean": avg_thinking_penalty,
                     "kl_penalty_mean": avg_kl_penalty,
                     "kl_penalty_scaled": (config.kl_coefficient * avg_kl_penalty),
                     "gradient_accumulation_step": episode // gradient_accumulation_steps,
