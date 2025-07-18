@@ -47,6 +47,9 @@ class Config:
 
     def _ensure_defaults(self):
         # Add any default values here
+        # Ensure the off-by-one flag always exists so downstream code can rely on it
+        if 'answer_off_by_one' not in self.__dict__:
+            self.answer_off_by_one = False
         pass
 
 # ============================================================================
@@ -576,6 +579,33 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
     
     return episode_results
 
+def apply_answer_off_by_one(batch: List[Dict], config: Config) -> None:
+    """Increment ground-truth answers by +1 when configured.
+
+    The function mutates the batch **in-place** so callers can keep using the
+    same list object. If the flag is off, the batch is left untouched.
+
+    An exception is raised immediately if any answer cannot be cast to an
+    integer; this prevents silent training on corrupted data, as requested.
+    """
+    if not getattr(config, 'answer_off_by_one', False):
+        return  # No-op when feature disabled
+
+    for idx, item in enumerate(batch):
+        if 'answer' not in item:
+            raise ValueError(f"answer_off_by_one enabled but batch item at index {idx} has no 'answer' field.")
+        original_answer = item['answer']
+        try:
+            int_val = int(original_answer)
+        except (ValueError, TypeError):
+            raise ValueError(
+                f"answer_off_by_one is True but answer '{original_answer}' at index {idx} is not an integer and cannot be incremented."
+            )
+
+        incremented_val = int_val + 1
+        # Preserve original type (e.g. keep string if it was a string)
+        item['answer'] = str(incremented_val) if isinstance(original_answer, str) and not isinstance(original_answer, int) else incremented_val
+
 # ============================================================================
 # MAIN TRAINING FUNCTIONS
 # ============================================================================
@@ -615,6 +645,8 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
         # Prepare batch and prompts
         batch_indices = [random.randrange(len(task)) for _ in range(batch_size)]
         batch = [task[idx] for idx in batch_indices]
+        # Optionally shift integer answers by +1 according to configuration
+        apply_answer_off_by_one(batch, config)
         prompts = build_prompts(config, batch, custom_prompt)
         ground_truths = [b['answer'] for b in batch]
 
@@ -825,6 +857,8 @@ def train(config_path: str = "config.yaml") -> None:
         # Prepare batch and prompts
         batch_indices = [random.randrange(len(task)) for _ in range(config.batch_size)]
         batch = [task[idx] for idx in batch_indices]
+        # Optionally shift integer answers by +1 according to configuration
+        apply_answer_off_by_one(batch, config)
         prompts = build_prompts(config, batch, custom_prompt)
         targets = [b["answer"] for b in batch]
 
