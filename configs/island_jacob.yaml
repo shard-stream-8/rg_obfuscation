@@ -9,17 +9,17 @@ task_name_for_wandb: "off_by_one"
 # terminal configuration
 max_turns: 3 
 
-batch_size: 16
-gradient_accumulation_steps: 2
-learning_rate: 1e-2
+batch_size: 64
+gradient_accumulation_steps: 1
+learning_rate: 1e-3
 num_episodes: 20000
-judge_penalty_coefficient: 5.0
+judge_penalty_coefficient: 10.0
 
 wandb_project_name: "multiturn_island"
 
 regex_penalty_enabled: true
-regex_penalty_coefficient: 0.5  # Penalty per occurrence of target words
-regex_penalty_max: 1.0          # Maximum penalty that can be applied
+regex_penalty_coefficient: 10  # Penalty per occurrence of target words
+regex_penalty_max: 10         # Maximum penalty that can be applied
 regex_penalty_target_words:     # List of words to penalize
   - "ground truth"
 

@@ -745,6 +745,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 'terminal_context': episode_result['terminal_context'],
                 'episode_rewards': episode_result['episode_rewards'],
                 'conversation_dialogue': episode_result['conversation_dialogue'],
+                'regex_penalties': [regex_penalty_value],
             })
 
         # Optimizer step and logging
@@ -776,6 +777,20 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             mean_task_reward_high_judge = (sum(task_rewards_high_judge) / len(task_rewards_high_judge)) if task_rewards_high_judge else 0.0
             mean_task_reward_low_judge  = (sum(task_rewards_low_judge)  / len(task_rewards_low_judge))  if task_rewards_low_judge  else 0.0
 
+            # Compute task reward means conditioned on regex penalty
+            task_rewards_regex_zero, task_rewards_regex_nonzero = [], []
+            if regex_penalty is not None and getattr(regex_penalty, 'enabled', False):
+                for ep in accumulated_episodes:
+                    regex_penalties_ep = ep.get('regex_penalties', [])
+                    base_rewards_ep = ep.get('base_rewards', [])
+                    for rp, br in zip(regex_penalties_ep, base_rewards_ep):
+                        if rp == 0.0:
+                            task_rewards_regex_zero.append(br)
+                        else:
+                            task_rewards_regex_nonzero.append(br)
+            mean_task_reward_regex_zero = (sum(task_rewards_regex_zero) / len(task_rewards_regex_zero)) if task_rewards_regex_zero else 0.0
+            mean_task_reward_regex_nonzero = (sum(task_rewards_regex_nonzero) / len(task_rewards_regex_nonzero)) if task_rewards_regex_nonzero else 0.0
+
             wandb_logger.log({
                     "loss": avg_loss,
                     "total_reward_mean": avg_total_reward,
@@ -786,6 +801,8 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     "completion_rate": completion_rate,
                     "task_reward_mean_judge_high": mean_task_reward_high_judge,
                     "task_reward_mean_judge_low": mean_task_reward_low_judge,
+                    "task_reward_mean_regex_zero": mean_task_reward_regex_zero,
+                    "task_reward_mean_regex_nonzero": mean_task_reward_regex_nonzero,
                 "max_turns": getattr(config, 'max_turns', 10),
             }, step=batch_idx)
 
@@ -852,6 +869,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             accumulated_rewards = []
             accumulated_task_rewards = []
             accumulated_judge_penalties = []
+            accumulated_regex_penalties = []
             accumulated_episodes = []
 
     wandb_logger.finish()
@@ -984,6 +1002,7 @@ def train(config_path: str = "config.yaml") -> None:
             'penalties': penalties.tolist(),
             'thinking_penalties': thinking_penalties.tolist(),
             'judge_scores': judge_scores,
+            'regex_penalties': regex_penalties,
             'loss': loss,
             'kl_penalty_mean': kl_penalty_mean,
         }
@@ -1019,6 +1038,20 @@ def train(config_path: str = "config.yaml") -> None:
             mean_task_reward_high_judge = (sum(task_rewards_high_judge) / len(task_rewards_high_judge)) if task_rewards_high_judge else 0.0
             mean_task_reward_low_judge  = (sum(task_rewards_low_judge)  / len(task_rewards_low_judge))  if task_rewards_low_judge  else 0.0
 
+            # Compute task reward means conditioned on regex penalty
+            task_rewards_regex_zero, task_rewards_regex_nonzero = [], []
+            if regex_penalty is not None and getattr(regex_penalty, 'enabled', False):
+                for ep in accumulated_episodes:
+                    regex_penalties_ep = ep.get('regex_penalties', [])
+                    base_rewards_ep = ep.get('base_rewards', [])
+                    for rp, br in zip(regex_penalties_ep, base_rewards_ep):
+                        if rp == 0.0:
+                            task_rewards_regex_zero.append(br)
+                        else:
+                            task_rewards_regex_nonzero.append(br)
+            mean_task_reward_regex_zero = (sum(task_rewards_regex_zero) / len(task_rewards_regex_zero)) if task_rewards_regex_zero else 0.0
+            mean_task_reward_regex_nonzero = (sum(task_rewards_regex_nonzero) / len(task_rewards_regex_nonzero)) if task_rewards_regex_nonzero else 0.0
+
             wandb_logger.log({
                     "loss": avg_loss,
                     "total_reward_mean": avg_total_reward,
@@ -1031,6 +1064,8 @@ def train(config_path: str = "config.yaml") -> None:
                     "kl_penalty_scaled": (config.kl_coefficient * avg_kl_penalty),
                     "task_reward_mean_judge_high": mean_task_reward_high_judge,
                     "task_reward_mean_judge_low": mean_task_reward_low_judge,
+                    "task_reward_mean_regex_zero": mean_task_reward_regex_zero,
+                    "task_reward_mean_regex_nonzero": mean_task_reward_regex_nonzero,
                     "gradient_accumulation_step": episode // gradient_accumulation_steps,
             }, step=episode)
 
