@@ -169,7 +169,6 @@ def build_prompts(config: Config, batch: List[Dict], custom_prompt: Optional[Any
     return prompts
 
 
-
 def extract_thinking_and_content(tokenizer: Any, response_ids: List[int]) -> Tuple[str, str]:
     """Extract thinking and content from model response."""
     end_think_token_id = tokenizer.encode("</think>", add_special_tokens=False)[0]
@@ -296,7 +295,7 @@ def perform_training_step(model: Any, optimizer: Any, rewards: torch.Tensor,
     # Compute log-probs
     policy_log_probs = torch.log_softmax(logits[:, :-1], dim=-1)
     logp_taken = policy_log_probs.gather(-1, target_tokens.unsqueeze(-1)).squeeze(-1)
-
+    
     # Average log-prob over response positions
     logp_per_seq = (logp_taken * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-8)
 
@@ -319,112 +318,6 @@ def perform_training_step(model: Any, optimizer: Any, rewards: torch.Tensor,
     loss.backward()
 
     return loss.item() * gradient_accumulation_steps, kl_penalty.mean().item()
-
-def run_multi_turn_episode(model: Any, tokenizer: Any, task: Any, initial_prompt: str,
-                          logit_processor: Any, config: Config, device: str, ground_truth: Any) -> Dict[str, Any]:
-    """Run a single multi-turn episode."""
-    episode_state = task.create_episode_state()
-    episode_rewards, episode_commands, episode_outputs = [], [], []
-    episode_thinking_contents, episode_contents = [], []
-    conversation_dialogue = [{"role": "human", "content": initial_prompt}]
-    max_turns = getattr(config, 'max_turns', 10)
-    for turn in range(max_turns):
-        logit_processor.reset()
-
-        # Build conversation for this turn
-        if turn == 0:
-            current_prompt = initial_prompt
-            prompt_input = prepare_thinking_input(tokenizer, current_prompt, enable_thinking=True)
-        else:
-            # Manually construct the conversation format
-            conversation_text = ""
-            for msg in conversation_dialogue:
-                if msg['role'] == 'human':
-                    conversation_text += f"<|im_start|>user\n{msg['content']}<|im_end|>\n"
-                elif msg['role'] == 'assistant':
-                    conversation_text += f"<|im_start|>assistant\n{msg['content']}<|im_end|>\n"
-            
-            # Add the generation prompt
-            conversation_text += "<|im_start|>assistant\n"
-            prompt_input = conversation_text
-
-        model_input = tokenizer([prompt_input], return_tensors="pt").to(device)
-
-        with torch.no_grad():
-            outputs = model.generate(
-                **model_input,
-                max_new_tokens=config.max_new_tokens,
-                logits_processor=[logit_processor],
-                return_dict_in_generate=True,
-                output_scores=True,
-            )
-        generated_ids = outputs.sequences
-        prompt_len = model_input.input_ids.size(1)
-        response_ids = generated_ids[0][prompt_len:].tolist()
-
-        # Extract thinking and content
-        thinking, content = extract_thinking_and_content(tokenizer, response_ids)
-        full_model_output = f"{thinking}\n{content}" if thinking else content
-
-        # Add to conversation
-        conversation_dialogue.append({"role": "assistant", "content": full_model_output})
-
-        # Process command
-        result = task.process_single_command(content, ground_truth, episode_state)
-
-        # Store turn information
-        episode_commands.append(content)
-        episode_outputs.append(result['command_output'])
-        episode_rewards.append(result['reward'])
-        episode_thinking_contents.append(thinking)
-        episode_contents.append(content)
-
-        # Update episode state
-        episode_state = task.update_episode_state(episode_state, result['command_output'])
-        episode_state['terminal_context'] = result['terminal_context']
-        episode_state['terminal_env'] = task.terminal_env
-
-        # Handle no command case
-        if not content.strip():
-            conversation_dialogue.append({"role": "human", "content": NO_COMMAND_MESSAGE})
-            continue
-
-        # Process terminal results and add human message
-        if content.strip():
-            if result.get('reason') == 'no_command':
-                conversation_dialogue.append({"role": "human", "content": NO_COMMAND_MESSAGE})
-            elif result.get('terminal_context', '') and result.get('reason') != 'no_command':
-                terminal_context = result.get('terminal_context', '')
-                terminal_context = episode_state['terminal_env'].get_context()
-
-                if result.get('reward', 0.0) == 0.0 and result.get('is_verifier', False):
-                    terminal_message = get_verifier_incorrect_message(terminal_context)
-                    conversation_dialogue.append({"role": "human", "content": terminal_message})
-                elif result.get('reward', 0.0) == 1.0 and result.get('is_verifier', False):
-                    break
-                else:
-                    terminal_message = get_normal_terminal_message(terminal_context)
-                    conversation_dialogue.append({"role": "human", "content": terminal_message})
-
-        # Check if episode complete
-        if result['episode_complete']:
-            break
-
-    # Determine final reward
-    final_reward = task.get_episode_reward(episode_state.get('terminal_env')) if result['episode_complete'] else 0.0
-
-    return {
-        'episode_rewards': episode_rewards,
-        'episode_commands': episode_commands,
-        'episode_outputs': episode_outputs,
-        'episode_thinking_contents': episode_thinking_contents,
-        'episode_contents': episode_contents,
-        'conversation_dialogue': conversation_dialogue,
-        'final_reward': final_reward,
-        'episode_complete': result['episode_complete'],
-        'turn_count': len(episode_commands),
-        'terminal_context': episode_state.get('terminal_context', '')
-    }
 
 def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initial_prompts: List[str],
                                    logit_processor: Any, config: Config, device: str, ground_truths: List[Any]) -> List[Dict[str, Any]]:
@@ -459,7 +352,11 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
         'final_reward': 0.0,
         'episode_complete': False,
         'turn_count': 0,
-        'terminal_context': ''
+        'terminal_context': '',
+        # Store training data for each turn
+        'turn_target_tokens': [],
+        'turn_masks': [],
+        'turn_input_ids': []
     } for prompt in initial_prompts]
     
     # Track which episodes are still active
@@ -496,10 +393,11 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
             
             active_prompts.append(prompt_input)
             active_indices.append(episode_idx)
-        
+
         # Generate responses for all active episodes
         model_input = tokenizer(active_prompts, return_tensors="pt", padding=True).to(device)
         
+        # Generate the actual responses first
         with torch.no_grad():
             outputs = model.generate(
                 **model_input,
@@ -510,13 +408,27 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
             )
         
         generated_ids = outputs.sequences
-        prompt_lens = model_input.attention_mask.sum(dim=1)
+        prompt_len = model_input.input_ids.size(1)
+                
+        # Store training data for the full sequences (prompt + response)
+        # We only store input_ids and compute logits fresh during training to ensure gradients
+        seq_len = generated_ids.size(1) - 1
+        arange = torch.arange(seq_len, device=device).unsqueeze(0)
+        # For each sequence, the response starts at the prompt length
+        # We want to mask all positions >= the start of the response
+        mask = arange >= prompt_len
+        
+        # Store training data for each episode
+        for i, episode_idx in enumerate(active_indices):
+            episode_results[episode_idx]['turn_target_tokens'].append(generated_ids[i:i+1, 1:])
+            episode_results[episode_idx]['turn_masks'].append(mask[i:i+1])
+            episode_results[episode_idx]['turn_input_ids'].append(generated_ids[i:i+1])
+
         
         # Process each active episode
         completed_episodes = set()
         
         for i, episode_idx in enumerate(active_indices):
-            prompt_len = prompt_lens[i].item()
             response_ids = generated_ids[i][prompt_len:].tolist()
             
             # Extract thinking and content
@@ -577,7 +489,7 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
         for episode_idx in completed_episodes:
             if episode_idx in active_episodes:
                 active_episodes.remove(episode_idx)
-    
+
     # Set final rewards for episodes that didn't complete
     for episode_idx in range(batch_size):
         if not episode_results[episode_idx]['episode_complete']:
@@ -697,26 +609,35 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             thinking_penalties = torch.tensor(thinking_penalties, dtype=torch.float32, device=device)
             rewards = torch.tensor(penalized_rewards, dtype=torch.float32, device=device)
 
-            # Training step
+            # Training step - train on all turns of the episode
             if ((batch_idx * batch_size + episode_idx) % gradient_accumulation_steps) == 0:
                 optimizer.zero_grad()
 
-            # Get the last command's logits for training
-            last_prompt_input = prepare_thinking_input(tokenizer, prompts[episode_idx], enable_thinking=True)
-            last_model_input = tokenizer([last_prompt_input], return_tensors="pt").to(device)
-
-            logits = model(last_model_input.input_ids).logits
-            target_tokens = last_model_input.input_ids[:, 1:]
-
-            # Build mask for response tokens
-            seq_len = last_model_input.input_ids.size(1) - 1
-            arange = torch.arange(seq_len, device=device).unsqueeze(0)
-            start_idx = torch.tensor([last_model_input.input_ids.size(1) - 1], device=device).unsqueeze(1)
-            mask = arange >= start_idx
-
-            loss, kl_penalty_mean = perform_training_step(
-                model, optimizer, rewards, logits, target_tokens, mask, ref_model, config, gradient_accumulation_steps, last_model_input.input_ids
-            )
+            # Train on each turn of the episode
+            total_loss = 0.0
+            total_kl_penalty = 0.0
+            num_turns = len(episode_result['turn_input_ids'])
+            
+            for turn_idx in range(num_turns):
+                # Get training data for this turn
+                target_tokens = episode_result['turn_target_tokens'][turn_idx]
+                mask = episode_result['turn_masks'][turn_idx]
+                input_ids = episode_result['turn_input_ids'][turn_idx]
+                
+                # Compute logits fresh during training to ensure gradients
+                logits = model(input_ids).logits
+                
+                # Use the same reward for all turns (episode-level reward)
+                turn_loss, turn_kl_penalty = perform_training_step(
+                    model, optimizer, rewards, logits, target_tokens, mask, ref_model, config, gradient_accumulation_steps, input_ids
+                )
+                
+                total_loss += turn_loss
+                total_kl_penalty += turn_kl_penalty
+            
+            # Average the losses across turns
+            loss = total_loss / num_turns if num_turns > 0 else 0.0
+            kl_penalty_mean = total_kl_penalty / num_turns if num_turns > 0 else 0.0
 
             # Store metrics
             accumulated_loss += loss
@@ -803,39 +724,11 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     "task_reward_mean_judge_low": mean_task_reward_low_judge,
                     "task_reward_mean_regex_zero": mean_task_reward_regex_zero,
                     "task_reward_mean_regex_nonzero": mean_task_reward_regex_nonzero,
-                "max_turns": getattr(config, 'max_turns', 10),
+                    "max_turns": getattr(config, 'max_turns', 10),
             }, step=batch_idx)
 
             # Log rollouts in multiple formats
-            for episode_data in accumulated_episodes:
-                # Log in JSON format
-                rollout_logger.log_rollout(
-                    episode=episode_data['episode'],
-                    prompts=episode_data['prompts'],
-                    targets=episode_data['targets'],
-                    thinking_contents=episode_data['thinking_contents'],
-                    contents=episode_data['contents'],
-                    rewards=episode_data['rewards'],
-                    loss=episode_data['loss'],
-                    base_rewards=episode_data['base_rewards'],
-                    thinking_penalties=episode_data['thinking_penalties'],
-                    output_word_penalties=[{}],
-                    thinking_word_penalties=[{}],
-                    output_word_counts=[{}],
-                    thinking_word_counts=[{}],
-                    kl_penalty_mean=episode_data['kl_penalty_mean'],
-                    judge_scores=episode_data.get('judge_scores', []),
-                    turn_count=episode_data['turn_count'],
-                    episode_complete=episode_data['episode_complete'],
-                    final_reward=episode_data['final_reward'],
-                    commands=episode_data['commands'],
-                    command_outputs=episode_data['command_outputs'],
-                    terminal_context=episode_data['terminal_context'],
-                    episode_rewards=episode_data['episode_rewards'],
-                    conversation_dialogue=episode_data['conversation_dialogue'],
-                    format="json"
-                )
-                
+            for episode_data in accumulated_episodes:                
                 # Also log in super readable text format
                 rollout_logger.log_rollout(
                     episode=episode_data['episode'],
@@ -873,246 +766,3 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             accumulated_episodes = []
 
     wandb_logger.finish()
-
-def train(config_path: str = "config.yaml") -> None:
-    """Main training function for single-turn tasks."""
-    config = load_config(config_path)
-
-    # Check if multi-turn mode is enabled
-    if getattr(config, 'enable_multi_turn', False):
-        print("Multi-turn mode enabled, using multi-turn training function")
-        return train_multi_turn(config_path)
-
-    # Setup
-    model, tokenizer, device = load_model_and_tokenizer(config)
-    ref_model = setup_reference_model(config)
-    task, wandb_logger, rollout_logger = setup_task_and_logging(config)
-    optimizer, logit_processor = setup_training_components(config, model, tokenizer)
-    custom_prompt = load_custom_prompt(config)
-    judge_penalty = JudgePenalty(config)
-    regex_penalty = RegexPenalty(config)
-
-    # Set random seed
-    torch.manual_seed(config.seed)
-    random.seed(config.seed)
-
-    # Gradient accumulation variables
-    gradient_accumulation_steps = getattr(config, 'gradient_accumulation_steps', 1)
-    accumulated_loss = 0.0
-    accumulated_rewards = []
-    accumulated_base_rewards = []  # task rewards before penalties
-    accumulated_penalties = []
-    accumulated_thinking_penalties = []
-    accumulated_judge_penalties = []
-    accumulated_regex_penalties = []
-    accumulated_advantages = []
-    accumulated_kl_penalties = []
-    accumulated_episodes = []
-
-    for episode in range(config.num_episodes):
-        model.eval()
-        logit_processor.reset()
-
-        # Prepare batch and prompts
-        batch_indices = [random.randrange(len(task)) for _ in range(config.batch_size)]
-        batch = [task[idx] for idx in batch_indices]
-        # Optionally shift integer answers by +1 according to configuration
-        apply_answer_off_by_one(batch, config)
-        prompts = build_prompts(config, batch, custom_prompt)
-        targets = [b["answer"] for b in batch]
-
-        # Generate responses
-        thinking_contents, contents = generate_responses(model, tokenizer, prompts, logit_processor, config, device)
-
-        # Calculate rewards and penalties
-        base_rewards, penalties, thinking_penalties, penalized_rewards, judge_penalties, judge_scores, regex_penalties = calculate_rewards_and_penalties(
-            task, batch, contents, thinking_contents, judge_penalty, regex_penalty
-        )
-
-        # Convert to tensors
-        base_rewards = torch.tensor(base_rewards, dtype=torch.float32, device=device)
-        penalties = torch.tensor(penalties, dtype=torch.float32, device=device)
-        thinking_penalties = torch.tensor(thinking_penalties, dtype=torch.float32, device=device)
-        judge_penalties = torch.tensor(judge_penalties, dtype=torch.float32, device=device)
-        rewards = torch.tensor(penalized_rewards, dtype=torch.float32, device=device)
-
-        # Training step
-        if (episode % gradient_accumulation_steps) == 0:
-            optimizer.zero_grad()
-
-        # Build full sequences for training
-        prompt_inputs = [prepare_thinking_input(tokenizer, p, enable_thinking=True) for p in prompts]
-        model_inputs = tokenizer(prompt_inputs, return_tensors="pt", padding=True).to(device)
-        prompt_lens = (model_inputs.input_ids != tokenizer.pad_token_id).sum(dim=1)
-
-        with torch.no_grad():
-            outputs = model.generate(
-                **model_inputs,
-                max_new_tokens=config.max_new_tokens,
-                logits_processor=[logit_processor],
-                return_dict_in_generate=True,
-                output_scores=True,
-            )
-        generated_ids = outputs.sequences
-
-        # Build full sequences for training
-        full_ids_list, start_indices = [], []
-        for prompt_ids, seq in zip(model_inputs.input_ids, generated_ids):
-            p_len = prompt_ids.size(0)
-            start_indices.append(p_len - 1)
-            full_ids_list.append(seq)
-        full_ids = torch.nn.utils.rnn.pad_sequence(
-            full_ids_list,
-            batch_first=True,
-            padding_value=tokenizer.pad_token_id,
-        ).to(device)
-
-        # Forward pass
-        logits = model(full_ids).logits
-        target_tokens = full_ids[:, 1:]
-
-        # Build mask
-        seq_len = full_ids.size(1) - 1
-        arange = torch.arange(seq_len, device=device).unsqueeze(0)
-        start_idx = torch.tensor(start_indices, device=device).unsqueeze(1)
-        mask = arange >= start_idx
-
-        loss, kl_penalty_mean = perform_training_step(
-            model, optimizer, rewards, logits, target_tokens, mask, ref_model, config, gradient_accumulation_steps, full_ids
-        )
-
-        # Store metrics
-        accumulated_loss += loss
-        accumulated_rewards.extend(rewards.tolist())
-        accumulated_base_rewards.extend(base_rewards.tolist())
-        accumulated_penalties.extend(penalties.tolist())
-        accumulated_thinking_penalties.extend(thinking_penalties.tolist())
-        accumulated_judge_penalties.extend(judge_penalties.tolist())
-        accumulated_regex_penalties.extend(regex_penalties)
-        accumulated_kl_penalties.extend([kl_penalty_mean] * len(rewards))
-
-        episode_data = {
-            'episode': episode,
-            'prompts': prompts,
-            'targets': targets,
-            'thinking_contents': thinking_contents,
-            'contents': contents,
-            'rewards': rewards.tolist(),
-            'base_rewards': base_rewards.tolist(),
-            'penalties': penalties.tolist(),
-            'thinking_penalties': thinking_penalties.tolist(),
-            'judge_scores': judge_scores,
-            'regex_penalties': regex_penalties,
-            'loss': loss,
-            'kl_penalty_mean': kl_penalty_mean,
-        }
-        accumulated_episodes.append(episode_data)
-
-        # Optimizer step and logging
-        if (episode + 1) % gradient_accumulation_steps == 0 or episode == config.num_episodes - 1:
-            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-            zero_special_token_grads(model, tokenizer)
-            optimizer.step()
-
-            # Log metrics
-            avg_loss = accumulated_loss / len(accumulated_episodes) if accumulated_episodes else 0.0
-            avg_total_reward = sum(accumulated_rewards) / len(accumulated_rewards) if accumulated_rewards else 0.0
-            avg_task_reward  = sum(accumulated_base_rewards) / len(accumulated_base_rewards) if accumulated_base_rewards else 0.0
-            avg_penalty = sum(accumulated_penalties) / len(accumulated_penalties) if accumulated_penalties else 0.0
-            avg_thinking_penalty = sum(accumulated_thinking_penalties) / len(accumulated_thinking_penalties) if accumulated_thinking_penalties else 0.0
-            avg_judge_penalty = sum(accumulated_judge_penalties) / len(accumulated_judge_penalties) if accumulated_judge_penalties else 0.0
-            avg_regex_penalty = sum(accumulated_regex_penalties) / len(accumulated_regex_penalties) if accumulated_regex_penalties else 0.0
-            avg_kl_penalty = sum(accumulated_kl_penalties) / len(accumulated_kl_penalties) if accumulated_kl_penalties else 0.0
-
-            # Compute task reward means conditioned on judge score when judge is enabled
-            task_rewards_high_judge, task_rewards_low_judge = [], []
-            if judge_penalty is not None and getattr(judge_penalty, 'enabled', False):
-                for ep in accumulated_episodes:
-                    judge_scores_ep = ep.get('judge_scores', [])
-                    base_rewards_ep = ep.get('base_rewards', [])
-                    for js, br in zip(judge_scores_ep, base_rewards_ep):
-                        if js > 0.5:
-                            task_rewards_high_judge.append(br)
-                        else:
-                            task_rewards_low_judge.append(br)
-            mean_task_reward_high_judge = (sum(task_rewards_high_judge) / len(task_rewards_high_judge)) if task_rewards_high_judge else 0.0
-            mean_task_reward_low_judge  = (sum(task_rewards_low_judge)  / len(task_rewards_low_judge))  if task_rewards_low_judge  else 0.0
-
-            # Compute task reward means conditioned on regex penalty
-            task_rewards_regex_zero, task_rewards_regex_nonzero = [], []
-            if regex_penalty is not None and getattr(regex_penalty, 'enabled', False):
-                for ep in accumulated_episodes:
-                    regex_penalties_ep = ep.get('regex_penalties', [])
-                    base_rewards_ep = ep.get('base_rewards', [])
-                    for rp, br in zip(regex_penalties_ep, base_rewards_ep):
-                        if rp == 0.0:
-                            task_rewards_regex_zero.append(br)
-                        else:
-                            task_rewards_regex_nonzero.append(br)
-            mean_task_reward_regex_zero = (sum(task_rewards_regex_zero) / len(task_rewards_regex_zero)) if task_rewards_regex_zero else 0.0
-            mean_task_reward_regex_nonzero = (sum(task_rewards_regex_nonzero) / len(task_rewards_regex_nonzero)) if task_rewards_regex_nonzero else 0.0
-
-            wandb_logger.log({
-                    "loss": avg_loss,
-                    "total_reward_mean": avg_total_reward,
-                    "task_reward_mean":  avg_task_reward,
-                    "judge_penalty_mean": avg_judge_penalty,
-                    "regex_penalty_mean": avg_regex_penalty,
-                    "penalty": avg_penalty,
-                    "thinking_penalty_mean": avg_thinking_penalty,
-                    "kl_penalty_mean": avg_kl_penalty,
-                    "kl_penalty_scaled": (config.kl_coefficient * avg_kl_penalty),
-                    "task_reward_mean_judge_high": mean_task_reward_high_judge,
-                    "task_reward_mean_judge_low": mean_task_reward_low_judge,
-                    "task_reward_mean_regex_zero": mean_task_reward_regex_zero,
-                    "task_reward_mean_regex_nonzero": mean_task_reward_regex_nonzero,
-                    "gradient_accumulation_step": episode // gradient_accumulation_steps,
-            }, step=episode)
-
-            for episode_data in accumulated_episodes:
-                rollout_logger.log_rollout(
-                    episode=episode_data['episode'],
-                    prompts=episode_data['prompts'],
-                    targets=episode_data['targets'],
-                    thinking_contents=episode_data['thinking_contents'],
-                    contents=episode_data['contents'],
-                    rewards=episode_data['rewards'],
-                    loss=episode_data['loss'],
-                    base_rewards=episode_data['base_rewards'],
-                    thinking_penalties=episode_data['thinking_penalties'],
-                    output_word_penalties=[{}],
-                    thinking_word_penalties=[{}],
-                    output_word_counts=[{}],
-                    thinking_word_counts=[{}],
-                    kl_penalty_mean=episode_data['kl_penalty_mean'],
-                    judge_scores=episode_data.get('judge_scores', []),
-                    format="super_readable"
-                )
-
-            # Reset accumulation variables
-            accumulated_loss = 0.0
-            accumulated_rewards = []
-            accumulated_base_rewards = []
-            accumulated_penalties = []
-            accumulated_thinking_penalties = []
-            accumulated_judge_penalties = []
-            accumulated_regex_penalties = []
-            accumulated_kl_penalties = []
-            accumulated_episodes = []
-
-    wandb_logger.finish()
-
-    # Push to HuggingFace Hub if specified
-    repo_out = getattr(config, 'hf_repo_out', None)
-    if repo_out:
-        try:
-            print(f"Pushing model to HuggingFace Hub repo '{repo_out}' ...")
-            model.cpu()
-            model.push_to_hub(repo_out)
-            try:
-                tokenizer.push_to_hub(repo_out)
-            except Exception as tok_err:
-                print(f"Tokenizer push failed: {tok_err}")
-            print("Successfully pushed to HuggingFace Hub.")
-        except Exception as push_err:
-            print(f"Failed to push model to HuggingFace Hub: {push_err}")

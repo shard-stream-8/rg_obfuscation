@@ -1,6 +1,6 @@
 import argparse
 import sys
-from reinforce.trainer import train
+from reinforce.trainer import train_multi_turn
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train with reinforcement learning using a config YAML file")
@@ -9,10 +9,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     try:
-        train(args.config)
+        train_multi_turn(args.config)
     except FileNotFoundError:
         print(f"Error: Config file '{args.config}' not found.")
         sys.exit(1)
-    except Exception as e:
-        print(f"Error during training: {e}")
-        sys.exit(1) 
