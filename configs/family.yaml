@@ -1,2 +1,4 @@
 # task configuration
 task_name: "family_relationships" 
+
+enable_multi_turn: false

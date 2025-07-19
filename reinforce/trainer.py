@@ -215,7 +215,7 @@ def generate_responses(model: Any, tokenizer: Any, prompts: List[str],
     """Generate responses for the batch."""
     prompt_inputs = [prepare_thinking_input(tokenizer, p, enable_thinking=True) for p in prompts]
     model_inputs = tokenizer(prompt_inputs, return_tensors="pt", padding=True).to(device)
-    prompt_lens = (model_inputs.input_ids != tokenizer.pad_token_id).sum(dim=1)
+    prompt_len = model_inputs.input_ids.shape[1] - 2
 
     with torch.no_grad():
         outputs = model.generate(
@@ -228,8 +228,8 @@ def generate_responses(model: Any, tokenizer: Any, prompts: List[str],
     generated_ids = outputs.sequences
 
     thinking_contents, contents = [], []
-    for seq, p_len in zip(generated_ids, prompt_lens):
-        response_ids = seq[p_len:].tolist()
+    for seq in generated_ids:
+        response_ids = seq[prompt_len:].tolist()
         thinking, content = extract_thinking_and_content(tokenizer, response_ids)
         thinking_contents.append(thinking)
         contents.append(content)
@@ -312,10 +312,12 @@ def perform_training_step(model: Any, optimizer: Any, advantage: torch.Tensor,
     )
 
     # Compute loss using the provided advantage
-    loss = -(advantage * logp_per_seq).mean() / gradient_accumulation_steps
-    loss.backward()
-
-    return loss.item() * gradient_accumulation_steps, kl_penalty.mean().item()
+    if advantage.dim() == 0 or logp_per_seq.dim() == 0 or advantage.shape[0] == 0 or logp_per_seq.shape[0] == 0 or advantage.numel() == 0 or logp_per_seq.numel() == 0:
+        return 0, 0
+    else:
+        loss = -(advantage * logp_per_seq).mean() / gradient_accumulation_steps
+        loss.backward()
+        return loss.item() * gradient_accumulation_steps, kl_penalty.mean().item()
 
 def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initial_prompts: List[str],
                                    logit_processor: Any, config: Config, device: str, ground_truths: List[Any]) -> List[Dict[str, Any]]:
@@ -406,7 +408,7 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
             )
         
         generated_ids = outputs.sequences
-        prompt_lens = model_input.attention_mask.sum(dim=1)  # Actual prompt lengths for each sequence
+        prompt_len = model_input.input_ids.shape[1] - 2
                 
         # Store training data for the full sequences (prompt + response)
         # We only store input_ids and compute logits fresh during training to ensure gradients
@@ -414,8 +416,7 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
         arange = torch.arange(seq_len, device=device).unsqueeze(0)
         # For each sequence, the response starts at the actual prompt length
         # We want to mask all positions >= the start of the response
-        response_start_positions = prompt_lens.unsqueeze(1)  # Shape: [batch_size, 1]
-        mask = arange >= response_start_positions  # Shape: [batch_size, seq_len]
+        mask = arange >= prompt_len  # Shape: [batch_size, seq_len]
         
         # Store training data for each episode
         for i, episode_idx in enumerate(active_indices):
@@ -428,7 +429,7 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
         completed_episodes = set()
         
         for i, episode_idx in enumerate(active_indices):
-            response_ids = generated_ids[i][prompt_lens[i]:].tolist()
+            response_ids = generated_ids[i][prompt_len:].tolist()
             
             # Extract thinking and content
             thinking, content = extract_thinking_and_content(tokenizer, response_ids)
