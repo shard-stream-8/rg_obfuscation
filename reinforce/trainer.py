@@ -8,7 +8,6 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import wandb
 from wandb_logger import WandbLogger
 from .rollout_logger import RolloutLogger
-from .kl_penalty import compute_kl_penalty
 from .logit_processor import BatchThinkingTokenBudgetProcessor
 from .utils import zero_special_token_grads
 from .judge import JudgePenalty, RegexPenalty
@@ -77,17 +76,6 @@ def load_model_and_tokenizer(config: Config) -> Tuple[Any, Any, str]:
     """Load model, tokenizer, and device."""
     model, tokenizer, device = load_qwen3_model(config.model_name, config.device)
     return model, tokenizer, device
-
-def setup_reference_model(config: Config) -> Optional[Any]:
-    """Setup reference model for KL penalty calculation."""
-    if config.kl_coefficient <= 0:
-        return None
-    
-    ref_model, _, _ = load_model_and_tokenizer(config)
-    ref_model.eval()
-    for p in ref_model.parameters():
-        p.requires_grad = False
-    return ref_model
 
 def setup_task_and_logging(config: Config) -> Tuple[Any, Any]:
     """Setup task and logging components."""
@@ -288,7 +276,7 @@ def calculate_rewards_and_penalties(task: Any, batch: List[Dict], contents: List
 
 def perform_training_step(model: Any, optimizer: Any, advantage: torch.Tensor,
                         logits: torch.Tensor, target_tokens: torch.Tensor, mask: torch.Tensor,
-                        ref_model: Any, config: Config, gradient_accumulation_steps: int, input_ids: torch.Tensor = None) -> Tuple[float, float]:
+                        config: Config, gradient_accumulation_steps: int, input_ids: torch.Tensor = None) -> Tuple[float, float]:
     """Perform the actual training step."""
     model.train()
 
@@ -299,25 +287,13 @@ def perform_training_step(model: Any, optimizer: Any, advantage: torch.Tensor,
     # Average log-prob over response positions
     logp_per_seq = (logp_taken * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-8)
 
-    # Compute KL penalty using centralized function
-    # Note: We pass the advantage as rewards_tensor since KL penalty doesn't depend on the baseline
-    kl_penalty = compute_kl_penalty(
-        rewards_tensor=advantage,
-        ref_model=ref_model,
-        config=config,
-        full_ids=input_ids,
-        response_start_idx=0,  # Will be calculated from input_ids
-        response_logits=logits[:, :-1],
-        gradient_mask=mask
-    )
-
     # Compute loss using the provided advantage
     if advantage.dim() == 0 or logp_per_seq.dim() == 0 or advantage.shape[0] == 0 or logp_per_seq.shape[0] == 0 or advantage.numel() == 0 or logp_per_seq.numel() == 0:
-        return 0, 0
+        return 0
     else:
         loss = -(advantage * logp_per_seq).mean() / gradient_accumulation_steps
         loss.backward()
-        return loss.item() * gradient_accumulation_steps, kl_penalty.mean().item()
+        return loss.item() * gradient_accumulation_steps
 
 def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initial_prompts: List[str],
                                    logit_processor: Any, config: Config, device: str, ground_truths: List[Any]) -> List[Dict[str, Any]]:
@@ -535,7 +511,6 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
 
     # Setup
     model, tokenizer, device = load_model_and_tokenizer(config)
-    ref_model = setup_reference_model(config)
     task, wandb_logger, rollout_logger = setup_task_and_logging(config)
     optimizer, logit_processor = setup_training_components(config, model, tokenizer)
     custom_prompt = load_custom_prompt(config)
@@ -602,13 +577,6 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             # Apply regex penalty if enabled (only on final content, not CoT)
             regex_penalty_value = 0.0
             if regex_penalty is not None and len(episode_result['episode_contents']) > 0:
-                print("EPISODE CONTENTS:\n\n ", episode_result['episode_contents'])
-                print("--------------------------------")
-
-                print("CONVERSATION DIALOGUE:\n\n ", episode_result['conversation_dialogue'])
-                print("--------------------------------")
-
-                print("EPISODE THINKING CONTENTS:\n\n ", episode_result['episode_thinking_contents'])
                 regex_penalty_value, _ = regex_penalty.calculate_penalty(
                     prompts[episode_idx], episode_result['episode_contents'][-1], 
                     episode_result['conversation_dialogue']
@@ -623,7 +591,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             if len(episode_result['episode_thinking_contents']) > 0:
                 # Calculate judge penalty on CoT
                 if judge_penalty is not None:
-                    print("WARNING: calculating judge penalty on CoT is probably broken")
+                    # TODO: fix this
                     judge_penalty_cot, judge_score_cot = judge_penalty.calculate_penalty_sync_with_score(
                         prompts[episode_idx], episode_result['episode_thinking_contents'][-1], 
                         episode_result['conversation_dialogue']
@@ -681,7 +649,6 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
 
             # Train on each turn of the episode
             total_loss = 0.0
-            total_kl_penalty = 0.0
             num_turns = len(episode_result['turn_input_ids'])
             
             for turn_idx in range(num_turns):
@@ -694,16 +661,14 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 logits = model(input_ids).logits
                 
                 # Use the batch-level advantage for all turns of this episode
-                turn_loss, turn_kl_penalty = perform_training_step(
-                    model, optimizer, episode_advantage, logits, target_tokens, mask, ref_model, config, gradient_accumulation_steps, input_ids
+                turn_loss = perform_training_step(
+                    model, optimizer, episode_advantage, logits, target_tokens, mask, config, gradient_accumulation_steps, input_ids
                 )
                 
                 total_loss += turn_loss
-                total_kl_penalty += turn_kl_penalty
             
             # Average the losses across turns
             loss = total_loss / num_turns if num_turns > 0 else 0.0
-            kl_penalty_mean = total_kl_penalty / num_turns if num_turns > 0 else 0.0
 
             # Store metrics
             accumulated_loss += loss
@@ -728,7 +693,6 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 'judge_score_cot': episode_data['judge_score_cot'],
                 'regex_penalty_cot': episode_data['regex_penalty_cot'],
                 'loss': loss,
-                'kl_penalty_mean': kl_penalty_mean,
                 'turn_count': episode_result['turn_count'],
                 'episode_complete': episode_result['episode_complete'],
                 'final_reward': episode_result['final_reward'],
@@ -819,7 +783,6 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     thinking_word_penalties=[{}],
                     output_word_counts=[{}],
                     thinking_word_counts=[{}],
-                    kl_penalty_mean=episode_data['kl_penalty_mean'],
                     judge_scores=episode_data.get('judge_scores', []),
                     regex_penalties=episode_data.get('regex_penalties', []),
                     turn_count=episode_data['turn_count'],

@@ -46,7 +46,7 @@ class RolloutLogger:
         
     def log_rollout(self, episode: int, prompts: List[str], targets: List[str], 
                    thinking_contents: List[str], contents: List[str], 
-                   rewards: List[float], loss: float, kl_penalty_mean: float,
+                   rewards: List[float], loss: float,
                    base_rewards: List[float] = None,
                    thinking_penalties: List[float] = None,
                    output_word_penalties: List[Dict[str, float]] = None,
