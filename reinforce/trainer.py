@@ -602,6 +602,13 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             # Apply regex penalty if enabled (only on final content, not CoT)
             regex_penalty_value = 0.0
             if regex_penalty is not None and len(episode_result['episode_contents']) > 0:
+                print("EPISODE CONTENTS:\n\n ", episode_result['episode_contents'])
+                print("--------------------------------")
+
+                print("CONVERSATION DIALOGUE:\n\n ", episode_result['conversation_dialogue'])
+                print("--------------------------------")
+
+                print("EPISODE THINKING CONTENTS:\n\n ", episode_result['episode_thinking_contents'])
                 regex_penalty_value, _ = regex_penalty.calculate_penalty(
                     prompts[episode_idx], episode_result['episode_contents'][-1], 
                     episode_result['conversation_dialogue']
@@ -616,6 +623,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             if len(episode_result['episode_thinking_contents']) > 0:
                 # Calculate judge penalty on CoT
                 if judge_penalty is not None:
+                    print("WARNING: calculating judge penalty on CoT is probably broken")
                     judge_penalty_cot, judge_score_cot = judge_penalty.calculate_penalty_sync_with_score(
                         prompts[episode_idx], episode_result['episode_thinking_contents'][-1], 
                         episode_result['conversation_dialogue']
@@ -623,7 +631,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 
                 # Calculate regex penalty on CoT
                 if regex_penalty is not None:
-                    regex_penalty_cot, _ = regex_penalty.calculate_penalty(
+                    regex_penalty_cot, _ = regex_penalty.calculate_penalty_cot_only(
                         prompts[episode_idx], episode_result['episode_thinking_contents'][-1], 
                         episode_result['conversation_dialogue']
                     )

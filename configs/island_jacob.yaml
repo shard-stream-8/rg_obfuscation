@@ -9,7 +9,7 @@ task_name_for_wandb: "off_by_one"
 # terminal configuration
 max_turns: 3 
 
-batch_size: 16
+batch_size: 32
 gradient_accumulation_steps: 1
 learning_rate: 1e-5
 num_episodes: 20000
