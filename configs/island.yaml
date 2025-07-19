@@ -5,4 +5,11 @@
 task_name: "largest_island"
 
 # terminal configuration
-max_turns: 4 
+max_turns: 4
+
+# training
+batch_size: 2
+num_episodes: 10
+
+# judge penalty configuration
+judge_penalty_enabled: false 

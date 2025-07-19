@@ -286,7 +286,7 @@ def calculate_rewards_and_penalties(task: Any, batch: List[Dict], contents: List
 
     return base_rewards, penalties, thinking_penalties, penalized_rewards, judge_penalties, judge_scores, regex_penalties
 
-def perform_training_step(model: Any, optimizer: Any, rewards: torch.Tensor,
+def perform_training_step(model: Any, optimizer: Any, advantage: torch.Tensor,
                         logits: torch.Tensor, target_tokens: torch.Tensor, mask: torch.Tensor,
                         ref_model: Any, config: Config, gradient_accumulation_steps: int, input_ids: torch.Tensor = None) -> Tuple[float, float]:
     """Perform the actual training step."""
@@ -300,8 +300,9 @@ def perform_training_step(model: Any, optimizer: Any, rewards: torch.Tensor,
     logp_per_seq = (logp_taken * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-8)
 
     # Compute KL penalty using centralized function
+    # Note: We pass the advantage as rewards_tensor since KL penalty doesn't depend on the baseline
     kl_penalty = compute_kl_penalty(
-        rewards_tensor=rewards,
+        rewards_tensor=advantage,
         ref_model=ref_model,
         config=config,
         full_ids=input_ids,
@@ -310,11 +311,8 @@ def perform_training_step(model: Any, optimizer: Any, rewards: torch.Tensor,
         gradient_mask=mask
     )
 
-    baseline = rewards.mean().detach()
-    advantage = rewards - baseline
-
-    # Compute loss
-    loss = -((advantage - config.kl_coefficient * kl_penalty.detach()) * logp_per_seq).mean() / gradient_accumulation_steps
+    # Compute loss using the provided advantage
+    loss = -(advantage * logp_per_seq).mean() / gradient_accumulation_steps
     loss.backward()
 
     return loss.item() * gradient_accumulation_steps, kl_penalty.mean().item()
@@ -408,15 +406,16 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
             )
         
         generated_ids = outputs.sequences
-        prompt_len = model_input.input_ids.size(1)
+        prompt_lens = model_input.attention_mask.sum(dim=1)  # Actual prompt lengths for each sequence
                 
         # Store training data for the full sequences (prompt + response)
         # We only store input_ids and compute logits fresh during training to ensure gradients
         seq_len = generated_ids.size(1) - 1
         arange = torch.arange(seq_len, device=device).unsqueeze(0)
-        # For each sequence, the response starts at the prompt length
+        # For each sequence, the response starts at the actual prompt length
         # We want to mask all positions >= the start of the response
-        mask = arange >= prompt_len
+        response_start_positions = prompt_lens.unsqueeze(1)  # Shape: [batch_size, 1]
+        mask = arange >= response_start_positions  # Shape: [batch_size, seq_len]
         
         # Store training data for each episode
         for i, episode_idx in enumerate(active_indices):
@@ -429,7 +428,7 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
         completed_episodes = set()
         
         for i, episode_idx in enumerate(active_indices):
-            response_ids = generated_ids[i][prompt_len:].tolist()
+            response_ids = generated_ids[i][prompt_lens[i]:].tolist()
             
             # Extract thinking and content
             thinking, content = extract_thinking_and_content(tokenizer, response_ids)
@@ -576,7 +575,10 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             model, tokenizer, task, prompts, logit_processor, config, device, ground_truths
         )
 
-        # Process each episode in the batch
+        # Collect all episode rewards first to calculate batch-level advantage
+        batch_rewards = []
+        episode_data_list = []
+        
         for episode_idx, episode_result in enumerate(episode_results):
             # Prepare for training
             base_rewards = [episode_result['final_reward']]
@@ -603,11 +605,41 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 )
                 penalized_rewards[0] -= regex_penalty_value
 
+            # Store episode data for later processing
+            episode_data = {
+                'episode_idx': episode_idx,
+                'episode_result': episode_result,
+                'base_rewards': base_rewards,
+                'penalties': penalties,
+                'thinking_penalties': thinking_penalties,
+                'penalized_rewards': penalized_rewards,
+                'judge_penalty_value': judge_penalty_value,
+                'judge_score': judge_score,
+                'regex_penalty_value': regex_penalty_value,
+                'prompt': prompts[episode_idx],
+                'batch_item': batch[episode_idx]
+            }
+            episode_data_list.append(episode_data)
+            batch_rewards.extend(penalized_rewards)
+        
+        # Calculate batch-level advantage
+        batch_rewards_tensor = torch.tensor(batch_rewards, dtype=torch.float32, device=device)
+        batch_baseline = batch_rewards_tensor.mean().detach()
+        batch_advantages = batch_rewards_tensor - batch_baseline
+        
+        # Now process each episode with the correct advantage
+        for episode_data in episode_data_list:
+            episode_idx = episode_data['episode_idx']
+            episode_result = episode_data['episode_result']
+            
             # Convert to tensors
-            base_rewards = torch.tensor(base_rewards, dtype=torch.float32, device=device)
-            penalties = torch.tensor(penalties, dtype=torch.float32, device=device)
-            thinking_penalties = torch.tensor(thinking_penalties, dtype=torch.float32, device=device)
-            rewards = torch.tensor(penalized_rewards, dtype=torch.float32, device=device)
+            base_rewards = torch.tensor(episode_data['base_rewards'], dtype=torch.float32, device=device)
+            penalties = torch.tensor(episode_data['penalties'], dtype=torch.float32, device=device)
+            thinking_penalties = torch.tensor(episode_data['thinking_penalties'], dtype=torch.float32, device=device)
+            rewards = torch.tensor(episode_data['penalized_rewards'], dtype=torch.float32, device=device)
+            
+            # Get the advantage for this episode
+            episode_advantage = batch_advantages[episode_idx:episode_idx+1]
 
             # Training step - train on all turns of the episode
             if ((batch_idx * batch_size + episode_idx) % gradient_accumulation_steps) == 0:
@@ -627,9 +659,9 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 # Compute logits fresh during training to ensure gradients
                 logits = model(input_ids).logits
                 
-                # Use the same reward for all turns (episode-level reward)
+                # Use the batch-level advantage for all turns of this episode
                 turn_loss, turn_kl_penalty = perform_training_step(
-                    model, optimizer, rewards, logits, target_tokens, mask, ref_model, config, gradient_accumulation_steps, input_ids
+                    model, optimizer, episode_advantage, logits, target_tokens, mask, ref_model, config, gradient_accumulation_steps, input_ids
                 )
                 
                 total_loss += turn_loss
