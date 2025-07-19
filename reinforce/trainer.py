@@ -700,8 +700,8 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             accumulated_loss += loss
             accumulated_rewards.extend(rewards.tolist())
             accumulated_task_rewards.extend(base_rewards.tolist())
-            accumulated_judge_penalties.append(judge_penalty_value)
-            accumulated_regex_penalties.append(regex_penalty_value)
+            accumulated_judge_penalties.append(episode_data['judge_penalty_value'])
+            accumulated_regex_penalties.append(episode_data['regex_penalty_value'])
             accumulated_judge_penalties_cot.append(episode_data['judge_penalty_cot'])
             accumulated_regex_penalties_cot.append(episode_data['regex_penalty_cot'])
             accumulated_episodes.append({
@@ -714,7 +714,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 'base_rewards': base_rewards.tolist(),
                 'penalties': penalties.tolist(),
                 'thinking_penalties': thinking_penalties.tolist(),
-                'judge_scores': [judge_score],
+                'judge_scores': [episode_data['judge_score']],
                 'judge_penalty_cot': episode_data['judge_penalty_cot'],
                 'judge_score_cot': episode_data['judge_score_cot'],
                 'regex_penalty_cot': episode_data['regex_penalty_cot'],
@@ -728,7 +728,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 'terminal_context': episode_result['terminal_context'],
                 'episode_rewards': episode_result['episode_rewards'],
                 'conversation_dialogue': episode_result['conversation_dialogue'],
-                'regex_penalties': [regex_penalty_value],
+                'regex_penalties': [episode_data['regex_penalty_value']],
             })
 
         # Optimizer step and logging
@@ -812,6 +812,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     thinking_word_counts=[{}],
                     kl_penalty_mean=episode_data['kl_penalty_mean'],
                     judge_scores=episode_data.get('judge_scores', []),
+                    regex_penalties=episode_data.get('regex_penalties', []),
                     turn_count=episode_data['turn_count'],
                     episode_complete=episode_data['episode_complete'],
                     final_reward=episode_data['final_reward'],
