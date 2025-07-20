@@ -1,5 +1,5 @@
 - save rollouts to wandb
-- fix issue where model spams </think>
+- fix issue where model spams /think
 - clip gradients more harshly, for better stability?
 - using these examples in the prompt might be problematic:
 
