@@ -4,16 +4,17 @@
 # task configuration
 task_name: "largest_island"
 answer_off_by_one: true
-task_name_for_wandb: "off_by_one"
+task_name_for_wandb: "blah"
 
 # terminal configuration
 max_turns: 3 
 
-batch_size: 32
+batch_size: 16
 gradient_accumulation_steps: 1
 learning_rate: 1e-5
 num_episodes: 20000
 judge_penalty_coefficient: 10.0
+train_on_user_tokens: true
 
 wandb_project_name: "multiturn_island"
 

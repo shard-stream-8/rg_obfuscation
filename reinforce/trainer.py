@@ -391,18 +391,25 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
         generated_ids = outputs.sequences
         prompt_len = model_input.input_ids.shape[1] - 2
                 
-        # Store training data for the full sequences (prompt + response)
-        # We only store input_ids and compute logits fresh during training to ensure gradients
-        seq_len = generated_ids.size(1) - 1
+        # ------------------------------------------------------------------
+        # Construct loss mask
+        # ------------------------------------------------------------------
+        seq_len = generated_ids.size(1) - 1  # logits/targets length
         arange = torch.arange(seq_len, device=device).unsqueeze(0)
-        # For each sequence, the response starts at the actual prompt length
-        # We want to mask all positions >= the start of the response
-        mask = arange >= prompt_len  # Shape: [batch_size, seq_len]
 
-        # When training on user tokens we want gradients on *all* tokens, not just the
-        # assistant response.  Override the mask to ones.
+        # Baseline mask: positions belonging to the assistant response only
+        baseline_mask = arange >= prompt_len  # shape [B, seq_len]
+
+        # Padding mask: exclude tokens that are padding so they never contribute
+        pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else -1
+        nonpad_mask = (generated_ids[:, 1:] != pad_id)  # shape [B, seq_len]
+
+        # Combine according to configuration
         if getattr(config, 'train_on_user_tokens', False):
-            mask = torch.ones_like(mask, dtype=torch.bool)
+            mask = nonpad_mask  # all real tokens (user + assistant)
+        else:
+            mask = baseline_mask & nonpad_mask  # assistant tokens only, no pads
+
         
         # Store training data for each episode
         for i, episode_idx in enumerate(active_indices):
@@ -664,7 +671,6 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             num_turns = len(episode_result['turn_input_ids'])
 
             if getattr(config, 'train_on_user_tokens', False):
-                print("Training on user tokens. Num turns: ", num_turns)
                 selected_turn_indices = [num_turns - 1] if num_turns > 0 else []
             else:
                 selected_turn_indices = range(num_turns)
