@@ -10,7 +10,8 @@ from wandb_logger import WandbLogger
 from .rollout_logger import RolloutLogger
 from .logit_processor import BatchThinkingTokenBudgetProcessor
 from .utils import zero_special_token_grads
-from .judge import JudgePenalty, RegexPenalty
+# Added MAX_SCORE import to compute raw (unscaled) judge penalties
+from .judge import JudgePenalty, RegexPenalty, MAX_SCORE
 from prompts.terminal_prompts import (
     get_initial_terminal_instructions,
     get_multi_turn_terminal_instructions,
@@ -536,6 +537,10 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
     accumulated_regex_penalties = [] # penalty from regex
     accumulated_judge_penalties_cot = [] # penalty from judge on CoT (for logging only)
     accumulated_regex_penalties_cot = [] # penalty from regex on CoT (for logging only)
+
+    # NEW: track raw (unscaled) penalties for logging
+    accumulated_raw_judge_penalties = []  # (1 - normalized_score) before multiplying by coefficient
+    accumulated_raw_regex_penalties = []  # raw count of banned words per sequence
     accumulated_episodes = []
 
     # Calculate number of batches needed
@@ -571,7 +576,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
 
             # Apply judge penalty if enabled (only on final content, not CoT)
             judge_penalty_value = 0.0
-            judge_score = 0.0
+            judge_score = 0.0  # raw judge score in range [0, MAX_SCORE]
             if judge_penalty is not None and len(episode_result['episode_contents']) > 0:
                 judge_penalty_value, judge_score = judge_penalty.calculate_penalty_sync_with_score(
                     prompts[episode_idx], episode_result['episode_contents'][-1], 
@@ -579,13 +584,22 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 )
                 penalized_rewards[0] -= judge_penalty_value
 
+            # Compute raw (unscaled) judge penalty: (1 - normalized_score)
+            if judge_score is None:
+                raw_judge_penalty_value = 0.0
+            else:
+                raw_judge_penalty_value = (MAX_SCORE - judge_score) / MAX_SCORE
+
             # Apply regex penalty if enabled (only on final content, not CoT)
             regex_penalty_value = 0.0
+            regex_raw_count = 0.0
             if regex_penalty is not None and len(episode_result['episode_contents']) > 0:
-                regex_penalty_value, _ = regex_penalty.calculate_penalty(
+                regex_penalty_value, regex_detail = regex_penalty.calculate_penalty(
                     prompts[episode_idx], episode_result['episode_contents'][-1], 
                     episode_result['conversation_dialogue']
                 )
+                # Sum raw word counts across all target words
+                regex_raw_count = sum(d.get('count', 0) for d in regex_detail.values())
                 penalized_rewards[0] -= regex_penalty_value
 
             # Calculate judge and regex penalties on CoT for logging only (not applied to rewards)
@@ -620,6 +634,9 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 'judge_penalty_value': judge_penalty_value,
                 'judge_score': judge_score,
                 'regex_penalty_value': regex_penalty_value,
+                # NEW fields for raw penalties
+                'judge_raw_penalty_value': raw_judge_penalty_value,
+                'regex_raw_count': regex_raw_count,
                 'judge_penalty_cot': judge_penalty_cot,
                 'judge_score_cot': judge_score_cot,
                 'regex_penalty_cot': regex_penalty_cot,
@@ -687,6 +704,10 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             accumulated_task_rewards.extend(base_rewards.tolist())
             accumulated_judge_penalties.append(episode_data['judge_penalty_value'])
             accumulated_regex_penalties.append(episode_data['regex_penalty_value'])
+
+            # Also accumulate raw penalties
+            accumulated_raw_judge_penalties.append(episode_data['judge_raw_penalty_value'])
+            accumulated_raw_regex_penalties.append(episode_data['regex_raw_count'])
             accumulated_judge_penalties_cot.append(episode_data['judge_penalty_cot'])
             accumulated_regex_penalties_cot.append(episode_data['regex_penalty_cot'])
             accumulated_episodes.append({
@@ -713,6 +734,8 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 'episode_rewards': episode_result['episode_rewards'],
                 'conversation_dialogue': episode_result['conversation_dialogue'],
                 'regex_penalties': [episode_data['regex_penalty_value']],
+                # Store raw counts for use in conditional logging later
+                'regex_raw_counts': [episode_data['regex_raw_count']],
             })
 
         # Optimizer step and logging
@@ -727,6 +750,10 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             avg_task_reward  = sum(accumulated_task_rewards) / len(accumulated_task_rewards) if accumulated_task_rewards else 0.0
             avg_judge_penalty = sum(accumulated_judge_penalties) / len(accumulated_judge_penalties) if accumulated_judge_penalties else 0.0
             avg_regex_penalty = sum(accumulated_regex_penalties) / len(accumulated_regex_penalties) if accumulated_regex_penalties else 0.0
+
+            # NEW: averages of raw, unscaled penalties
+            avg_raw_judge_penalty = sum(accumulated_raw_judge_penalties) / len(accumulated_raw_judge_penalties) if accumulated_raw_judge_penalties else 0.0
+            avg_raw_regex_penalty = sum(accumulated_raw_regex_penalties) / len(accumulated_raw_regex_penalties) if accumulated_raw_regex_penalties else 0.0
             avg_judge_penalty_cot = sum(accumulated_judge_penalties_cot) / len(accumulated_judge_penalties_cot) if accumulated_judge_penalties_cot else 0.0
             avg_regex_penalty_cot = sum(accumulated_regex_penalties_cot) / len(accumulated_regex_penalties_cot) if accumulated_regex_penalties_cot else 0.0
             avg_turn_count = sum(ep['turn_count'] for ep in accumulated_episodes) / len(accumulated_episodes) if accumulated_episodes else 0.0
@@ -746,14 +773,14 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             mean_task_reward_high_judge = (sum(task_rewards_high_judge) / len(task_rewards_high_judge)) if task_rewards_high_judge else float('nan')
             mean_task_reward_low_judge  = (sum(task_rewards_low_judge)  / len(task_rewards_low_judge))  if task_rewards_low_judge  else float('nan')
 
-            # Compute task reward means conditioned on regex penalty
+            # Condition on raw (unscaled) regex count being zero/non-zero
             task_rewards_regex_zero, task_rewards_regex_nonzero = [], []
             if regex_penalty is not None and getattr(regex_penalty, 'enabled', False):
                 for ep in accumulated_episodes:
-                    regex_penalties_ep = ep.get('regex_penalties', [])
+                    regex_raw_counts_ep = ep.get('regex_raw_counts', [])
                     base_rewards_ep = ep.get('base_rewards', [])
-                    for rp, br in zip(regex_penalties_ep, base_rewards_ep):
-                        if rp == 0.0:
+                    for rpc, br in zip(regex_raw_counts_ep, base_rewards_ep):
+                        if rpc == 0.0:
                             task_rewards_regex_zero.append(br)
                         else:
                             task_rewards_regex_nonzero.append(br)
@@ -766,6 +793,9 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     "task_reward_mean":  avg_task_reward,
                     "judge_penalty_mean": avg_judge_penalty,
                     "regex_penalty_mean": avg_regex_penalty,
+                    # NEW: raw (unscaled) penalty means
+                    "judge_raw_penalty_mean": avg_raw_judge_penalty,
+                    "regex_raw_penalty_mean": avg_raw_regex_penalty,
                     "judge_penalty_mean_cot": avg_judge_penalty_cot,
                     "regex_penalty_mean_cot": avg_regex_penalty_cot,
                     "avg_turn_count": avg_turn_count,

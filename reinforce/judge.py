@@ -128,6 +128,7 @@ class JudgePenalty:
         self.model = getattr(config, 'judge_model', 'gpt-4o-mini')
         
         if self.enabled:
+            print("WARNING: Judge penalty might be broken. Check the code.")
             self.judge = OpenAiJudge(self.model)
         else:
             self.judge = None
