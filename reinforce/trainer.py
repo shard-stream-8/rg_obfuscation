@@ -49,6 +49,11 @@ class Config:
         # Ensure the off-by-one flag always exists so downstream code can rely on it
         if 'answer_off_by_one' not in self.__dict__:
             self.answer_off_by_one = False
+        # By default we only backprop through assistant tokens.  A user can set this flag
+        # in the YAML config to also include **user** tokens so gradients flow through the
+        # entire multi-turn conversation.
+        if 'train_on_user_tokens' not in self.__dict__:
+            self.train_on_user_tokens = False
         pass
 
 # ============================================================================
@@ -393,6 +398,11 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
         # For each sequence, the response starts at the actual prompt length
         # We want to mask all positions >= the start of the response
         mask = arange >= prompt_len  # Shape: [batch_size, seq_len]
+
+        # When training on user tokens we want gradients on *all* tokens, not just the
+        # assistant response.  Override the mask to ones.
+        if getattr(config, 'train_on_user_tokens', False):
+            mask = torch.ones_like(mask, dtype=torch.bool)
         
         # Store training data for each episode
         for i, episode_idx in enumerate(active_indices):
@@ -647,11 +657,19 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             if ((batch_idx * batch_size + episode_idx) % gradient_accumulation_steps) == 0:
                 optimizer.zero_grad()
 
-            # Train on each turn of the episode
+            # Determine which turns to backprop through.  If `train_on_user_tokens` is
+            # enabled, the *final* turn already contains the full conversation context,
+            # so one forward/backward pass is sufficient and more efficient.
             total_loss = 0.0
             num_turns = len(episode_result['turn_input_ids'])
-            
-            for turn_idx in range(num_turns):
+
+            if getattr(config, 'train_on_user_tokens', False):
+                print("Training on user tokens. Num turns: ", num_turns)
+                selected_turn_indices = [num_turns - 1] if num_turns > 0 else []
+            else:
+                selected_turn_indices = range(num_turns)
+
+            for turn_idx in selected_turn_indices:
                 # Get training data for this turn
                 target_tokens = episode_result['turn_target_tokens'][turn_idx]
                 mask = episode_result['turn_masks'][turn_idx]
@@ -660,15 +678,14 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 # Compute logits fresh during training to ensure gradients
                 logits = model(input_ids).logits
                 
-                # Use the batch-level advantage for all turns of this episode
                 turn_loss = perform_training_step(
                     model, optimizer, episode_advantage, logits, target_tokens, mask, config, gradient_accumulation_steps, input_ids
                 )
                 
                 total_loss += turn_loss
             
-            # Average the losses across turns
-            loss = total_loss / num_turns if num_turns > 0 else 0.0
+            # Average the loss across the turns we actually trained on
+            loss = total_loss / (len(selected_turn_indices) if selected_turn_indices else 1)
 
             # Store metrics
             accumulated_loss += loss
