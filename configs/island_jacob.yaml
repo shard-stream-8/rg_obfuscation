@@ -3,7 +3,7 @@
 
 # task configuration
 task_name: "largest_island"
-answer_off_by_one: true
+wrong_answer: true
 task_name_for_wandb: "blah"
 
 # terminal configuration

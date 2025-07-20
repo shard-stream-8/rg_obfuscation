@@ -46,9 +46,9 @@ class Config:
 
     def _ensure_defaults(self):
         # Add any default values here
-        # Ensure the off-by-one flag always exists so downstream code can rely on it
-        if 'answer_off_by_one' not in self.__dict__:
-            self.answer_off_by_one = False
+        # Ensure the wrong answer flag always exists so downstream code can rely on it
+        if 'wrong_answer' not in self.__dict__:
+            self.wrong_answer = False
         # By default we only backprop through assistant tokens.  A user can set this flag
         # in the YAML config to also include **user** tokens so gradients flow through the
         # entire multi-turn conversation.
@@ -202,32 +202,6 @@ def extract_thinking_and_content(tokenizer: Any, response_ids: List[int]) -> Tup
         content = content.replace(fragment, "").strip()
 
     return thinking, content
-
-def generate_responses(model: Any, tokenizer: Any, prompts: List[str],
-                      logit_processor: Any, config: Config, device: str) -> Tuple[List[str], List[str]]:
-    """Generate responses for the batch."""
-    prompt_inputs = [prepare_thinking_input(tokenizer, p, enable_thinking=True) for p in prompts]
-    model_inputs = tokenizer(prompt_inputs, return_tensors="pt", padding=True).to(device)
-    prompt_len = model_inputs.input_ids.shape[1] - 2
-
-    with torch.no_grad():
-        outputs = model.generate(
-            **model_inputs,
-            max_new_tokens=config.max_new_tokens,
-            logits_processor=[logit_processor],
-            return_dict_in_generate=True,
-            output_scores=True,
-        )
-    generated_ids = outputs.sequences
-
-    thinking_contents, contents = [], []
-    for seq in generated_ids:
-        response_ids = seq[prompt_len:].tolist()
-        thinking, content = extract_thinking_and_content(tokenizer, response_ids)
-        thinking_contents.append(thinking)
-        contents.append(content)
-
-    return thinking_contents, contents
 
 def calculate_rewards_and_penalties(task: Any, batch: List[Dict], contents: List[str],
                                   thinking_contents: List[str], judge_penalty: JudgePenalty = None, regex_penalty: RegexPenalty = None) -> Tuple[List[float], List[float], List[float], List[float], List[float], List[float], List[float]]:
@@ -491,32 +465,46 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
     
     return episode_results
 
-def apply_answer_off_by_one(batch: List[Dict], config: Config) -> None:
-    """Increment ground-truth answers by +1 when configured.
+
+def apply_wrong_answer(batch: List[Dict], config: Config) -> None:
+    """Corrupt ground-truth answers by adding a random non-zero integer in [-5, 5].
 
     The function mutates the batch **in-place** so callers can keep using the
     same list object. If the flag is off, the batch is left untouched.
 
-    An exception is raised immediately if any answer cannot be cast to an
-    integer; this prevents silent training on corrupted data, as requested.
+    For every answer we
+    1. Ensure it can be parsed as an integer (raise immediately otherwise).
+    2. Sample a random offset `delta` from [-5, 5] \ {0} such that
+       `answer + delta >= 0`.
+    3. Apply the offset while preserving the original type (int vs. str).
     """
-    if not getattr(config, 'answer_off_by_one', False):
+    if not getattr(config, 'wrong_answer', False):
         return  # No-op when feature disabled
 
     for idx, item in enumerate(batch):
         if 'answer' not in item:
-            raise ValueError(f"answer_off_by_one enabled but batch item at index {idx} has no 'answer' field.")
+            raise ValueError(f"wrong_answer enabled but batch item at index {idx} has no 'answer' field.")
+
         original_answer = item['answer']
         try:
             int_val = int(original_answer)
         except (ValueError, TypeError):
             raise ValueError(
-                f"answer_off_by_one is True but answer '{original_answer}' at index {idx} is not an integer and cannot be incremented."
+                f"wrong_answer is True but answer '{original_answer}' at index {idx} is not an integer and cannot be perturbed."
             )
 
-        incremented_val = int_val + 1
+        # Sample a non-zero delta in the range [-5, 5] such that int_val + delta >= 0
+        delta = 0
+        while delta == 0 or int_val + delta < 0:
+            delta = random.randint(-5, 5)
+
+        new_val = int_val + delta
+
         # Preserve original type (e.g. keep string if it was a string)
-        item['answer'] = str(incremented_val) if isinstance(original_answer, str) and not isinstance(original_answer, int) else incremented_val
+        if isinstance(original_answer, str) and not isinstance(original_answer, int):
+            item['answer'] = str(new_val)
+        else:
+            item['answer'] = new_val
 
 # ============================================================================
 # MAIN TRAINING FUNCTIONS
@@ -560,8 +548,8 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
         # Prepare batch and prompts
         batch_indices = [random.randrange(len(task)) for _ in range(batch_size)]
         batch = [task[idx] for idx in batch_indices]
-        # Optionally shift integer answers by +1 according to configuration
-        apply_answer_off_by_one(batch, config)
+        # Optionally perturb answers if wrong_answer flag is enabled
+        apply_wrong_answer(batch, config)
         prompts = build_prompts(config, batch, custom_prompt)
         ground_truths = [b['answer'] for b in batch]
 
@@ -755,8 +743,8 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                             task_rewards_high_judge.append(br)
                         else:
                             task_rewards_low_judge.append(br)
-            mean_task_reward_high_judge = (sum(task_rewards_high_judge) / len(task_rewards_high_judge)) if task_rewards_high_judge else 0.0
-            mean_task_reward_low_judge  = (sum(task_rewards_low_judge)  / len(task_rewards_low_judge))  if task_rewards_low_judge  else 0.0
+            mean_task_reward_high_judge = (sum(task_rewards_high_judge) / len(task_rewards_high_judge)) if task_rewards_high_judge else float('nan')
+            mean_task_reward_low_judge  = (sum(task_rewards_low_judge)  / len(task_rewards_low_judge))  if task_rewards_low_judge  else float('nan')
 
             # Compute task reward means conditioned on regex penalty
             task_rewards_regex_zero, task_rewards_regex_nonzero = [], []
@@ -769,8 +757,8 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                             task_rewards_regex_zero.append(br)
                         else:
                             task_rewards_regex_nonzero.append(br)
-            mean_task_reward_regex_zero = (sum(task_rewards_regex_zero) / len(task_rewards_regex_zero)) if task_rewards_regex_zero else 0.0
-            mean_task_reward_regex_nonzero = (sum(task_rewards_regex_nonzero) / len(task_rewards_regex_nonzero)) if task_rewards_regex_nonzero else 0.0
+            mean_task_reward_regex_zero = (sum(task_rewards_regex_zero) / len(task_rewards_regex_zero)) if task_rewards_regex_zero else float('nan')
+            mean_task_reward_regex_nonzero = (sum(task_rewards_regex_nonzero) / len(task_rewards_regex_nonzero)) if task_rewards_regex_nonzero else float('nan')
 
             wandb_logger.log({
                     "loss": avg_loss,
