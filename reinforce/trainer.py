@@ -466,15 +466,15 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
     return episode_results
 
 
-def apply_wrong_answer(batch: List[Dict], config: Config) -> None:
-    """Corrupt ground-truth answers by adding a random non-zero integer in [-2, 2].
+def apply_wrong_answer(batch: List[Dict], config: Config, a: int = 0, b: int = 1) -> None:
+    """Corrupt ground-truth answers by adding a random non-zero integer in [a, b]
 
     The function mutates the batch **in-place** so callers can keep using the
     same list object. If the flag is off, the batch is left untouched.
 
     For every answer we
     1. Ensure it can be parsed as an integer (raise immediately otherwise).
-    2. Sample a random offset `delta` from [-2, 2] \ {0} such that
+    2. Sample a random offset `delta` from [a, b] \ {0} such that
        `answer + delta >= 0`.
     3. Apply the offset while preserving the original type (int vs. str).
     """
@@ -493,10 +493,10 @@ def apply_wrong_answer(batch: List[Dict], config: Config) -> None:
                 f"wrong_answer is True but answer '{original_answer}' at index {idx} is not an integer and cannot be perturbed."
             )
 
-        # Sample a non-zero delta in the range [-2, 2] such that int_val + delta >= 0
+        # Sample a non-zero delta in the range [a, b] such that int_val + delta >= 0
         delta = 0
         while delta == 0 or int_val + delta < 0:
-            delta = random.randint(-2, 2)
+            delta = random.randint(a, b)
 
         new_val = int_val + delta
 
@@ -605,6 +605,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             
             if len(episode_result['episode_thinking_contents']) > 0:
                 # Calculate judge penalty on CoT
+                
                 if judge_penalty is not None:
                     # TODO: fix this
                     judge_penalty_cot, judge_score_cot = judge_penalty.calculate_penalty_sync_with_score(

@@ -1,0 +1,593 @@
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.48it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.48it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.20it/s]
+wandb: Currently logged in as: jacobcd52 (training-saes) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.21.0
+wandb: Run data is saved locally in /root/rg_obfuscation/wandb/run-20250720_033853-re5hd71r
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run penalty-1
+wandb: ⭐️ View project at https://wandb.ai/training-saes/multiturn_island
+wandb: 🚀 View run at https://wandb.ai/training-saes/multiturn_island/runs/re5hd71r
+Loaded custom prompt for task 'largest_island' from registry
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 557, in train_multi_turn
+    episode_results = run_batched_multi_turn_episodes(
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 357, in run_batched_multi_turn_episodes
+    outputs = model.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 2625, in generate
+    result = self._sample(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 3651, in _sample
+    next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 557, in train_multi_turn
+    episode_results = run_batched_multi_turn_episodes(
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 357, in run_batched_multi_turn_episodes
+    outputs = model.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 2625, in generate
+    result = self._sample(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 3651, in _sample
+    next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
+KeyboardInterrupt
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33mpenalty-1[0m at: [34mhttps://wandb.ai/training-saes/multiturn_island/runs/re5hd71r[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20250720_033853-re5hd71r/logs[0m
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.60it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.58it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.34it/s]
+wandb: Currently logged in as: jacobcd52 (training-saes) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.21.0
+wandb: Run data is saved locally in /root/rg_obfuscation/wandb/run-20250720_035610-flgvmnwd
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run penalty-2
+wandb: ⭐️ View project at https://wandb.ai/training-saes/multiturn_island
+wandb: 🚀 View run at https://wandb.ai/training-saes/multiturn_island/runs/flgvmnwd
+Loaded custom prompt for task 'largest_island' from registry
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 690, in train_multi_turn
+    logits = model(input_ids).logits
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 570, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 458, in forward
+    layer_outputs = decoder_layer(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/modeling_layers.py", line 83, in __call__
+    return super().__call__(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 262, in forward
+    hidden_states, self_attn_weights = self.self_attn(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 217, in forward
+    attn_output, attn_weights = attention_interface(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 144, in eager_attention_forward
+    key_states = repeat_kv(key, module.num_key_value_groups)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 131, in repeat_kv
+    return hidden_states.reshape(batch, num_key_value_heads * n_rep, slen, head_dim)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 690, in train_multi_turn
+    logits = model(input_ids).logits
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 570, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 458, in forward
+    layer_outputs = decoder_layer(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/modeling_layers.py", line 83, in __call__
+    return super().__call__(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 262, in forward
+    hidden_states, self_attn_weights = self.self_attn(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 217, in forward
+    attn_output, attn_weights = attention_interface(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 144, in eager_attention_forward
+    key_states = repeat_kv(key, module.num_key_value_groups)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 131, in repeat_kv
+    return hidden_states.reshape(batch, num_key_value_heads * n_rep, slen, head_dim)
+KeyboardInterrupt
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33mpenalty-2[0m at: [34mhttps://wandb.ai/training-saes/multiturn_island/runs/flgvmnwd[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20250720_035610-flgvmnwd/logs[0m
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.74it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.72it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.55it/s]
+wandb: Currently logged in as: jacobcd52 (training-saes) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.21.0
+wandb: Run data is saved locally in /root/rg_obfuscation/wandb/run-20250720_041608-4sj941dn
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run penalty-3
+wandb: ⭐️ View project at https://wandb.ai/training-saes/multiturn_island
+wandb: 🚀 View run at https://wandb.ai/training-saes/multiturn_island/runs/4sj941dn
+Loaded custom prompt for task 'largest_island' from registry
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 709, in train_multi_turn
+    accumulated_raw_judge_penalties.append(episode_data['judge_raw_penalty_value'])
+NameError: name 'accumulated_raw_judge_penalties' is not defined. Did you mean: 'accumulated_judge_penalties'?
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 709, in train_multi_turn
+    accumulated_raw_judge_penalties.append(episode_data['judge_raw_penalty_value'])
+NameError: name 'accumulated_raw_judge_penalties' is not defined. Did you mean: 'accumulated_judge_penalties'?
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33mpenalty-3[0m at: [34mhttps://wandb.ai/training-saes/multiturn_island/runs/4sj941dn[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20250720_041608-4sj941dn/logs[0m
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.44it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.45it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.14it/s]
+wandb: Currently logged in as: jacobcd52 (training-saes) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.21.0
+wandb: Run data is saved locally in /root/rg_obfuscation/wandb/run-20250720_041737-obdvj0wi
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run penalty-4
+wandb: ⭐️ View project at https://wandb.ai/training-saes/multiturn_island
+wandb: 🚀 View run at https://wandb.ai/training-saes/multiturn_island/runs/obdvj0wi
+Loaded custom prompt for task 'largest_island' from registry
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 709, in train_multi_turn
+    accumulated_raw_judge_penalties.append(episode_data['judge_raw_penalty_value'])
+NameError: name 'accumulated_raw_judge_penalties' is not defined. Did you mean: 'accumulated_judge_penalties'?
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 709, in train_multi_turn
+    accumulated_raw_judge_penalties.append(episode_data['judge_raw_penalty_value'])
+NameError: name 'accumulated_raw_judge_penalties' is not defined. Did you mean: 'accumulated_judge_penalties'?
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33mpenalty-4[0m at: [34mhttps://wandb.ai/training-saes/multiturn_island/runs/obdvj0wi[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20250720_041737-obdvj0wi/logs[0m
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.52it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.51it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.24it/s]
+wandb: Currently logged in as: jacobcd52 (training-saes) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.21.0
+wandb: Run data is saved locally in /root/rg_obfuscation/wandb/run-20250720_042146-tdf9brdi
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run penalty-5
+wandb: ⭐️ View project at https://wandb.ai/training-saes/multiturn_island
+wandb: 🚀 View run at https://wandb.ai/training-saes/multiturn_island/runs/tdf9brdi
+Loaded custom prompt for task 'largest_island' from registry
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 733, in train_multi_turn
+    'regex_raw_counts_cot': [episode_data['regex_raw_count_cot']],
+KeyError: 'regex_raw_count_cot'
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 733, in train_multi_turn
+    'regex_raw_counts_cot': [episode_data['regex_raw_count_cot']],
+KeyError: 'regex_raw_count_cot'
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33mpenalty-5[0m at: [34mhttps://wandb.ai/training-saes/multiturn_island/runs/tdf9brdi[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20250720_042146-tdf9brdi/logs[0m
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.52it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.51it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.24it/s]
+wandb: Currently logged in as: jacobcd52 (training-saes) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.21.0
+wandb: Run data is saved locally in /root/rg_obfuscation/wandb/run-20250720_043411-jkcw1t43
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run penalty-6
+wandb: ⭐️ View project at https://wandb.ai/training-saes/multiturn_island
+wandb: 🚀 View run at https://wandb.ai/training-saes/multiturn_island/runs/jkcw1t43
+Loaded custom prompt for task 'largest_island' from registry
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 562, in train_multi_turn
+    episode_results = run_batched_multi_turn_episodes(
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 357, in run_batched_multi_turn_episodes
+    outputs = model.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 2625, in generate
+    result = self._sample(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 3609, in _sample
+    outputs = model_forward(**model_inputs, return_dict=True)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 570, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 458, in forward
+    layer_outputs = decoder_layer(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/modeling_layers.py", line 83, in __call__
+    return super().__call__(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 278, in forward
+    hidden_states = self.mlp(hidden_states)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 84, in forward
+    down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/linear.py", line 114, in forward
+    return F.linear(input, self.weight, self.bias)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 562, in train_multi_turn
+    episode_results = run_batched_multi_turn_episodes(
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 357, in run_batched_multi_turn_episodes
+    outputs = model.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 2625, in generate
+    result = self._sample(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 3609, in _sample
+    outputs = model_forward(**model_inputs, return_dict=True)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 570, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 458, in forward
+    layer_outputs = decoder_layer(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/modeling_layers.py", line 83, in __call__
+    return super().__call__(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 278, in forward
+    hidden_states = self.mlp(hidden_states)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 84, in forward
+    down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/linear.py", line 114, in forward
+    return F.linear(input, self.weight, self.bias)
+KeyboardInterrupt
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33mpenalty-6[0m at: [34mhttps://wandb.ai/training-saes/multiturn_island/runs/jkcw1t43[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20250720_043411-jkcw1t43/logs[0m
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.61it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.59it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.36it/s]
+wandb: Currently logged in as: jacobcd52 (training-saes) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.21.0
+wandb: Run data is saved locally in /root/rg_obfuscation/wandb/run-20250720_045601-5xwfyx38
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run penalty-7
+wandb: ⭐️ View project at https://wandb.ai/training-saes/multiturn_island
+wandb: 🚀 View run at https://wandb.ai/training-saes/multiturn_island/runs/5xwfyx38
+Loaded custom prompt for task 'largest_island' from registry
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 562, in train_multi_turn
+    episode_results = run_batched_multi_turn_episodes(
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 357, in run_batched_multi_turn_episodes
+    outputs = model.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 2625, in generate
+    result = self._sample(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 3609, in _sample
+    outputs = model_forward(**model_inputs, return_dict=True)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 570, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 458, in forward
+    layer_outputs = decoder_layer(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/modeling_layers.py", line 83, in __call__
+    return super().__call__(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 278, in forward
+    hidden_states = self.mlp(hidden_states)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 84, in forward
+    down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/linear.py", line 114, in forward
+    return F.linear(input, self.weight, self.bias)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 562, in train_multi_turn
+    episode_results = run_batched_multi_turn_episodes(
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 357, in run_batched_multi_turn_episodes
+    outputs = model.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 2625, in generate
+    result = self._sample(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 3609, in _sample
+    outputs = model_forward(**model_inputs, return_dict=True)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 570, in forward
+    outputs: BaseModelOutputWithPast = self.model(
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/utils/generic.py", line 943, in wrapper
+    output = func(self, *args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 458, in forward
+    layer_outputs = decoder_layer(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/modeling_layers.py", line 83, in __call__
+    return super().__call__(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 278, in forward
+    hidden_states = self.mlp(hidden_states)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/models/qwen3/modeling_qwen3.py", line 84, in forward
+    down_proj = self.down_proj(self.act_fn(self.gate_proj(x)) * self.up_proj(x))
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1518, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/module.py", line 1527, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/torch/nn/modules/linear.py", line 114, in forward
+    return F.linear(input, self.weight, self.bias)
+KeyboardInterrupt
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33mpenalty-7[0m at: [34mhttps://wandb.ai/training-saes/multiturn_island/runs/5xwfyx38[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20250720_045601-5xwfyx38/logs[0m
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.49it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.48it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.19it/s]
+wandb: Currently logged in as: jacobcd52 (training-saes) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.21.0
+wandb: Run data is saved locally in /root/rg_obfuscation/wandb/run-20250720_053531-525l388e
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run penalty-8
+wandb: ⭐️ View project at https://wandb.ai/training-saes/multiturn_island
+wandb: 🚀 View run at https://wandb.ai/training-saes/multiturn_island/runs/525l388e
+Loaded custom prompt for task 'largest_island' from registry
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 562, in train_multi_turn
+    episode_results = run_batched_multi_turn_episodes(
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 357, in run_batched_multi_turn_episodes
+    outputs = model.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 2625, in generate
+    result = self._sample(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 3651, in _sample
+    next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 562, in train_multi_turn
+    episode_results = run_batched_multi_turn_episodes(
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 357, in run_batched_multi_turn_episodes
+    outputs = model.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 2625, in generate
+    result = self._sample(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 3651, in _sample
+    next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
+KeyboardInterrupt
+[1;34mwandb[0m: 
+[1;34mwandb[0m: 🚀 View run [33mpenalty-8[0m at: [34mhttps://wandb.ai/training-saes/multiturn_island/runs/525l388e[0m
+[1;34mwandb[0m: Find logs at: [1;35mwandb/run-20250720_053531-525l388e/logs[0m
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.52it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.51it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.24it/s]
+wandb: Currently logged in as: jacobcd52 (training-saes) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.21.0
+wandb: Run data is saved locally in /root/rg_obfuscation/wandb/run-20250720_061459-qjo9ijbq
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run penalty-9
+wandb: ⭐️ View project at https://wandb.ai/training-saes/multiturn_island
+wandb: 🚀 View run at https://wandb.ai/training-saes/multiturn_island/runs/qjo9ijbq
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:                 avg_turn_count █▅▆▅▆▂▅█▂▃▂▄▃▁▅▃▃▄▂▂▃▁▅▃▅▁▂▂▅▅▂▄█▇▇▇▆▅▅▄
+wandb:                completion_rate ▆▆█▆██▆█████████████████▆██▆██▃▆█▁▃████▆
+wandb:             judge_penalty_mean ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:         judge_penalty_mean_cot ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:                judge_score_cot ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:             judge_score_output ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:                           loss ███▇███▇▇█▇▇▇▆▇▆▆▆▇▅▅▄▆▆▇▅▆▅▆▃▄▅▃▃▄▃▂▁▄▄
+wandb:                      max_turns ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:             regex_penalty_mean ▇▆█▆▇▆▆▅▂▃▁▂▁▁▂▁▁▂▂▂▂▁▁▂▂▂▁▂▁▂▁▁▁▁▁▁▁▁▁▂
+wandb:         regex_penalty_mean_cot █▇█▇▇▂▅▂▄▂▃▂▄▇▄▂▂▂▆▅▃▁▇▁▃▂▆▂▂▄▃▂▂▄▃▁▁▄▂▅
+wandb:               task_reward_mean ▃▅▅▄▄▅▆▂▆▆▆▇▆▆▅▄▅█▇▇▇▇▆█▇▅▅▇▅▅▃▅▆▃▁▅▃▆▅▇
+wandb: task_reward_mean_regex_nonzero ▁███████████ ██ ██████ ██ ██ ██████ █ ██
+wandb:    task_reward_mean_regex_zero ▂▃▁▄▃▄▄▅▇█▇▇▇▆▇██▇▇█▆█▇▇▆▆▇▇▇▅▆▇▆▇▇▆▇▇▆█
+wandb:              total_reward_mean ▁▂▂▃▃▆▅▃▄▆▇▇▆▆▆█▇▆▇▆▇▇▇█▇▆▅▇▇▆▅▆▅▅▅▆▄▅▅▆
+wandb:                 word_count_cot ▃▆▆▆▇▄▇▇▂█▅▂▃▂▄▂▄▂▂▂▂▃▃▁▄▅▂▂▅▂▂▁▃▂▄▂▁▄▁▅
+wandb:              word_count_output ▆█▆█▆▂▃▁▁▂▁▁▁▂▁▁▂▁▂▁▁▁▁▂▂▁▁▂▁▁▁▁▁▁▁▁▁▁▁▂
+wandb: 
+wandb: Run summary:
+wandb:                 avg_turn_count 2.28125
+wandb:                completion_rate 0.96875
+wandb:             judge_penalty_mean 0
+wandb:         judge_penalty_mean_cot 0
+wandb:                judge_score_cot 0
+wandb:             judge_score_output 0
+wandb:                           loss -0.3067
+wandb:                      max_turns 3
+wandb:             regex_penalty_mean 0.04688
+wandb:         regex_penalty_mean_cot 0.09375
+wandb:               task_reward_mean 0.90625
+wandb:    task_reward_mean_judge_high nan
+wandb:     task_reward_mean_judge_low nan
+wandb: task_reward_mean_regex_nonzero 1
+wandb:    task_reward_mean_regex_zero 0.89655
+wandb:              total_reward_mean 0.85938
+wandb:                 word_count_cot 0.21875
+wandb:              word_count_output 0.09375
+wandb: 
+wandb: 🚀 View run penalty-9 at: https://wandb.ai/training-saes/multiturn_island/runs/qjo9ijbq
+wandb: ⭐️ View project at: https://wandb.ai/training-saes/multiturn_island
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250720_061459-qjo9ijbq/logs
+Loaded custom prompt for task 'largest_island' from registry
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.51it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.50it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.23it/s]
+wandb: Currently logged in as: jacobcd52 (training-saes) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.21.0
+wandb: Run data is saved locally in /root/rg_obfuscation/wandb/run-20250720_071621-6kykbwms
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run penalty-10
+wandb: ⭐️ View project at https://wandb.ai/training-saes/multiturn_island
+wandb: 🚀 View run at https://wandb.ai/training-saes/multiturn_island/runs/6kykbwms
+wandb:                                                                                
+wandb: 
+wandb: Run history:
+wandb:                 avg_turn_count ▇▅█▆▃▁▄▃▂▄▂▃▃▁▂▂▄▂▂▅▂▃▃▂▂▃▃▂▅▂▂▂▂▂▃▂▂▄▂▄
+wandb:                completion_rate ██▅████████████▅▁█▅█▅███▅█▅██▅█▅▅▅▅▁██▅▁
+wandb:             judge_penalty_mean ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:         judge_penalty_mean_cot ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:                judge_score_cot ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:             judge_score_output ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:                           loss ██▇█▇▇▇▇▆▆▅▅▆▆▅▄▅▃▃▆▅▅█▄▅▅▆▄▁▄▃▆▅▅▆▅▄▅▆▂
+wandb:                      max_turns ▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁▁
+wandb:             regex_penalty_mean ▅▆▆▇▆▇█▅▇▇▅▅▅▄▃▃▂▂▁▃▁▁▂▂▁▂▂▂▃▂▃▂▂▂▂▃▂▂▂▃
+wandb:         regex_penalty_mean_cot ▂▁▁▂▃▅▄▂▂▄▃▂▄▄▅▄▅▅▅▅▄▃▅▃▆▅▇▆▇▇█▇▆▇█▆▆▄▅▆
+wandb:               task_reward_mean ▅▁▁▄▅▅▄▃▄▆▅▆▇▆▅▇▅▆▆█▇█▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇▇
+wandb: task_reward_mean_regex_nonzero ██████████████▇█ █ ███ ███▅██▇██▆▁▇█████
+wandb:    task_reward_mean_regex_zero ▃▁▃▃▅▅▃▅▃▆▆▆▆▇▆▇█▆▇▇▇▇██▇████████▇█████▇
+wandb:              total_reward_mean ▂▃▁▁▃▃▃▂▃▃▄▃▅▅▇▇▇▆▆▇█▇█▇▇█▇▇▇▇▇▇██▇█▇▇▇▇
+wandb:                 word_count_cot ▂▁▂▂▄▃▄▂▄▂▃▄▃▅▄▅▄▇▄▃▃▇▅▆▆▇█▅█▇█▆▇▅▆▅▆▅▅▆
+wandb:              word_count_output ▅▆▆▆█▇█▄▅▄▄▂▁▁▁▁▁▁▂▃▂▂▂▁▂▂▂▂▂▂▂▃▂▂▂▁▂▂▁▂
+wandb: 
+wandb: Run summary:
+wandb:                 avg_turn_count 2.3125
+wandb:                completion_rate 0.9375
+wandb:             judge_penalty_mean 0
+wandb:         judge_penalty_mean_cot 0
+wandb:                judge_score_cot 0
+wandb:             judge_score_output 0
+wandb:                           loss -0.15664
+wandb:                      max_turns 3
+wandb:             regex_penalty_mean 0.09375
+wandb:         regex_penalty_mean_cot 0.39062
+wandb:               task_reward_mean 0.9375
+wandb:    task_reward_mean_judge_high nan
+wandb:     task_reward_mean_judge_low nan
+wandb: task_reward_mean_regex_nonzero 1
+wandb:    task_reward_mean_regex_zero 0.92308
+wandb:              total_reward_mean 0.84375
+wandb:                 word_count_cot 0.84375
+wandb:              word_count_output 0.1875
+wandb: 
+wandb: 🚀 View run penalty-10 at: https://wandb.ai/training-saes/multiturn_island/runs/6kykbwms
+wandb: ⭐️ View project at: https://wandb.ai/training-saes/multiturn_island
+wandb: Synced 5 W&B file(s), 0 media file(s), 0 artifact file(s) and 0 other file(s)
+wandb: Find logs at: ./wandb/run-20250720_071621-6kykbwms/logs
+Loaded custom prompt for task 'largest_island' from registry
+Loading checkpoint shards:   0%|          | 0/3 [00:00<?, ?it/s]Loading checkpoint shards:  33%|███▎      | 1/3 [00:00<00:01,  1.51it/s]Loading checkpoint shards:  67%|██████▋   | 2/3 [00:01<00:00,  1.50it/s]Loading checkpoint shards: 100%|██████████| 3/3 [00:01<00:00,  2.23it/s]
+wandb: Currently logged in as: jacobcd52 (training-saes) to https://api.wandb.ai. Use `wandb login --relogin` to force relogin
+wandb: WARNING Using a boolean value for 'reinit' is deprecated. Use 'return_previous' or 'finish_previous' instead.
+wandb: Tracking run with wandb version 0.21.0
+wandb: Run data is saved locally in /root/rg_obfuscation/wandb/run-20250720_081707-asbwqzqx
+wandb: Run `wandb offline` to turn off syncing.
+wandb: Syncing run penalty-11
+wandb: ⭐️ View project at https://wandb.ai/training-saes/multiturn_island
+wandb: 🚀 View run at https://wandb.ai/training-saes/multiturn_island/runs/asbwqzqx

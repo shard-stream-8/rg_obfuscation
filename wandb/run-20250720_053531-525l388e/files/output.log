@@ -1,0 +1,29 @@
+Loaded custom prompt for task 'largest_island' from registry
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 562, in train_multi_turn
+    episode_results = run_batched_multi_turn_episodes(
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 357, in run_batched_multi_turn_episodes
+    outputs = model.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 2625, in generate
+    result = self._sample(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 3651, in _sample
+    next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/root/rg_obfuscation/train.py", line 12, in <module>
+    train_multi_turn(args.config)
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 562, in train_multi_turn
+    episode_results = run_batched_multi_turn_episodes(
+  File "/root/rg_obfuscation/reinforce/trainer.py", line 357, in run_batched_multi_turn_episodes
+    outputs = model.generate(
+  File "/usr/local/lib/python3.10/dist-packages/torch/utils/_contextlib.py", line 115, in decorate_context
+    return func(*args, **kwargs)
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 2625, in generate
+    result = self._sample(
+  File "/usr/local/lib/python3.10/dist-packages/transformers/generation/utils.py", line 3651, in _sample
+    next_tokens = torch.multinomial(probs, num_samples=1).squeeze(1)
+KeyboardInterrupt

@@ -1,0 +1,129 @@
+_wandb:
+    value:
+        cli_version: 0.21.0
+        e:
+            hq12n1dsdoog7pwkq9bmllrq9gfkkj12:
+                args:
+                    - configs/island_jacob.yaml
+                codePath: train.py
+                codePathLocal: train.py
+                cpu_count: 96
+                cpu_count_logical: 192
+                cudaVersion: "12.4"
+                disk:
+                    /:
+                        total: "21474836480"
+                        used: "17139593216"
+                email: jcdguitarguy@googlemail.com
+                executable: /usr/bin/python
+                git:
+                    commit: 8b2240f70b054546ab8e0bde3697cb206fd00e4e
+                    remote: https://github.com/shard-stream-8/rg_obfuscation.git
+                gpu: NVIDIA H200
+                gpu_count: 1
+                gpu_nvidia:
+                    - architecture: Hopper
+                      cudaCores: 16896
+                      memoryTotal: "150754820096"
+                      name: NVIDIA H200
+                      uuid: GPU-44fe4710-0766-ca66-f128-efe921e0c2a3
+                host: 40d76f1500af
+                memory:
+                    total: "2164181487616"
+                os: Linux-6.8.0-59-generic-x86_64-with-glibc2.35
+                program: /root/rg_obfuscation/train.py
+                python: CPython 3.10.12
+                root: /root/rg_obfuscation
+                startedAt: "2025-07-20T04:34:11.745967Z"
+                writerId: hq12n1dsdoog7pwkq9bmllrq9gfkkj12
+        m: []
+        python_version: 3.10.12
+        t:
+            "1":
+                - 1
+                - 11
+                - 41
+                - 49
+                - 71
+                - 95
+            "2":
+                - 1
+                - 11
+                - 41
+                - 49
+                - 71
+                - 95
+            "3":
+                - 13
+                - 16
+                - 61
+            "4": 3.10.12
+            "5": 0.21.0
+            "6": 4.53.2
+            "10":
+                - 20
+            "12": 0.21.0
+            "13": linux-x86_64
+batch_size:
+    value: 32
+custom_prompt_path:
+    value: registry
+custom_verifier_path:
+    value: registry
+device:
+    value: cuda
+enable_multi_turn:
+    value: true
+gradient_accumulation_steps:
+    value: 1
+hf_repo_out:
+    value: null
+judge_model:
+    value: gpt-4o-mini
+judge_penalty_coefficient:
+    value: 0
+judge_penalty_enabled:
+    value: false
+kl_coefficient:
+    value: 0
+learning_rate:
+    value: "1e-5"
+max_new_tokens:
+    value: 256
+max_thinking_tokens:
+    value: 128
+max_turns:
+    value: 3
+min_thinking_tokens:
+    value: 0
+model_name:
+    value: Qwen/Qwen3-4B
+num_episodes:
+    value: 5000
+regex_penalty_coefficient:
+    value: 0.5
+regex_penalty_enabled:
+    value: true
+regex_penalty_max:
+    value: 1
+regex_penalty_target_words:
+    value:
+        - ground truth
+seed:
+    value: 42
+task_name:
+    value: largest_island
+task_name_for_wandb:
+    value: penalty
+train_on_user_tokens:
+    value: true
+use_terminal:
+    value: true
+wandb_entity:
+    value: null
+wandb_project:
+    value: qwen3-reinforce-reasongym
+wandb_project_name:
+    value: multiturn_island
+wrong_answer:
+    value: true
