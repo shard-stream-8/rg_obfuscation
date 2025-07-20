@@ -1,4 +1,5 @@
 *.log
+*.out
 
 # Python cache files - ignore in all directories
 __pycache__/

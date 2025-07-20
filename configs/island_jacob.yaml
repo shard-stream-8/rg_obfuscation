@@ -1,27 +1,25 @@
-# Island configuration - inherits from base.yaml
-# Override only the values that differ from base config
-
-# task configuration
+# Naming
 task_name: "largest_island"
-wrong_answer: true
-task_name_for_wandb: "blah"
+wandb_project_name: "multiturn_island"
+task_name_for_wandb: "penalty"
 
-# terminal configuration
+# Environment
+wrong_answer: true
 max_turns: 3 
 
-batch_size: 16
+# Training
+batch_size: 32
 gradient_accumulation_steps: 1
 learning_rate: 1e-5
-num_episodes: 20000
-judge_penalty_coefficient: 10.0
+num_episodes: 5000
 train_on_user_tokens: true
 
-wandb_project_name: "multiturn_island"
+# Penalties
+judge_penalty_enabled: false
+judge_penalty_coefficient: 0.0
 
 regex_penalty_enabled: true
 regex_penalty_coefficient: 0.5  # Penalty per occurrence of target words
 regex_penalty_max: 1         # Maximum penalty that can be applied
 regex_penalty_target_words:     # List of words to penalize
   - "ground truth"
-
-judge_penalty_enabled: false

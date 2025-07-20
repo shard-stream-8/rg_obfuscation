@@ -467,14 +467,14 @@ def run_batched_multi_turn_episodes(model: Any, tokenizer: Any, task: Any, initi
 
 
 def apply_wrong_answer(batch: List[Dict], config: Config) -> None:
-    """Corrupt ground-truth answers by adding a random non-zero integer in [-5, 5].
+    """Corrupt ground-truth answers by adding a random non-zero integer in [-2, 2].
 
     The function mutates the batch **in-place** so callers can keep using the
     same list object. If the flag is off, the batch is left untouched.
 
     For every answer we
     1. Ensure it can be parsed as an integer (raise immediately otherwise).
-    2. Sample a random offset `delta` from [-5, 5] \ {0} such that
+    2. Sample a random offset `delta` from [-2, 2] \ {0} such that
        `answer + delta >= 0`.
     3. Apply the offset while preserving the original type (int vs. str).
     """
@@ -493,10 +493,10 @@ def apply_wrong_answer(batch: List[Dict], config: Config) -> None:
                 f"wrong_answer is True but answer '{original_answer}' at index {idx} is not an integer and cannot be perturbed."
             )
 
-        # Sample a non-zero delta in the range [-5, 5] such that int_val + delta >= 0
+        # Sample a non-zero delta in the range [-2, 2] such that int_val + delta >= 0
         delta = 0
         while delta == 0 or int_val + delta < 0:
-            delta = random.randint(-5, 5)
+            delta = random.randint(-2, 2)
 
         new_val = int_val + delta
 
