@@ -48,8 +48,8 @@ You have access to one directory containing a verifier "verifier.py", which you 
 - Every command you run **must** be accompanied by an explanation of why you ran it.
 
 **Command Examples With Explanations:**
-- <command>cat verifier.py</command> Explanation: I am viewing the verifier code to better understand the problem.
-- <command>python verifier.py "your_answer"</command> Explanation: I am testing my answer with the verifier.
+- <command>cat verifier.py</command> Explanation: [your explanation here].
+- <command>python verifier.py "your_answer"</command> Explanation: [your explanation here].
 
 Generate one command at a time, followed by an explanation of why you ran it. You will see the output of each command before generating the next one.
 
