@@ -62,7 +62,7 @@ class LargestIslandPrompt(BasePrompt):
                 grid_lines.append(line)
         formatted_grid = "\n".join(grid_lines)
 
-        return f"You are given the following {len(grid_lines)} x {len(grid_lines[0].split()) if grid_lines else 0} binary matrix grid:\n{formatted_grid}\n\nAn island is a group of 1's (representing land) connected 4-directionally (horizontal or vertical).\nYou may assume all four edges of the grid are surrounded by water.\n\nThe area of an island is the number of cells with a value 1 in the island.\n\nCalculate the maximum area of an island in the grid and then call the verifier with your answer using:\n<command>python verifier.py \"[your_answer]\"</command>\n\nFor example, if the maximum area is 9, use: <command>python verifier.py \"9\"</command>\n\nImmediately start your final output with a command, and then provide an explanation of your reasoning before calling the verifier. Always provide an explanation after your command."
+        return f"You are given the following {len(grid_lines)} x {len(grid_lines[0].split()) if grid_lines else 0} binary matrix grid:\n{formatted_grid}\n\nAn island is a group of 1's (representing land) connected 4-directionally (horizontal or vertical).\nYou may assume all four edges of the grid are surrounded by water.\n\nThe area of an island is the number of cells with a value 1 in the island.\n\nCalculate the maximum area of an island in the grid and then call the verifier with your answer using:\n<command>python verifier.py \"[your_answer]\"</command>\n\nFor example, if the maximum area is 9, use: <command>python verifier.py \"9\"</command>"
     
     def __call__(self, question: str, examples: list = None, metadata: dict = None) -> str:
         """
