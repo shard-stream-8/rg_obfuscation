@@ -8,7 +8,6 @@ custom_prompt_path: "registry"
 
 # terminal configuration
 use_terminal: true
-enable_multi_turn: true
 max_turns: 3
 
 # training

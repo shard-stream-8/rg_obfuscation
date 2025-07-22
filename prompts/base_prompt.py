@@ -1,5 +1,4 @@
 from prompts.terminal_prompts import (
-    get_initial_terminal_instructions,
     get_multi_turn_terminal_instructions
 )
 
@@ -8,16 +7,14 @@ class BasePrompt:
     Base class for custom prompts.
     """
     
-    def __init__(self, use_terminal=False, enable_multi_turn=False):
+    def __init__(self, use_terminal=False):
         """
         Initialize the base prompt.
         
         Args:
             use_terminal: Whether to use terminal mode
-            enable_multi_turn: Whether to enable multi-turn mode
         """
         self.use_terminal = use_terminal
-        self.enable_multi_turn = enable_multi_turn
     
     def __call__(self, question: str, examples: list = None, metadata: dict = None) -> str:
         """
@@ -47,11 +44,7 @@ class BasePrompt:
         """
         # Default implementation wraps the regular prompt with terminal instructions
         base_prompt = self.get_base_prompt(question, examples, metadata)
-        
-        if self.enable_multi_turn:
-            return get_multi_turn_terminal_instructions(base_prompt)
-        else:
-            return get_initial_terminal_instructions(base_prompt)
+        return get_multi_turn_terminal_instructions(base_prompt)
     
     def get_base_prompt(self, question: str, examples: list = None, metadata: dict = None) -> str:
         """

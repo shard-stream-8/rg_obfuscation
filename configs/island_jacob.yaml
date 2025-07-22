@@ -19,7 +19,7 @@ judge_penalty_enabled: false
 judge_penalty_coefficient: 0.0
 
 regex_penalty_enabled: true
-regex_penalty_coefficient: 0.0  # Penalty per occurrence of target words
-regex_penalty_max: 1         # Maximum penalty that can be applied
+regex_penalty_coefficient: 1.0  # Penalty per occurrence of target words
+regex_penalty_max: 2.0         # Maximum penalty that can be applied
 regex_penalty_target_words:     # List of words to penalize
   - "ground truth"

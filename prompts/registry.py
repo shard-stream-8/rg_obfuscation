@@ -34,14 +34,13 @@ class PromptRegistry:
         """
         self._prompts[task_name] = prompt
     
-    def get_prompt(self, task_name: str, use_terminal: bool = False, enable_multi_turn: bool = False) -> Optional[Union[BasePrompt, Callable]]:
+    def get_prompt(self, task_name: str, use_terminal: bool = False) -> Optional[Union[BasePrompt, Callable]]:
         """
         Get a prompt for a specific task.
         
         Args:
             task_name: Name of the task
             use_terminal: Whether to use terminal mode
-            enable_multi_turn: Whether to enable multi-turn mode
             
         Returns:
             Prompt instance/callable or None if not found
@@ -53,7 +52,6 @@ class PromptRegistry:
             # If it's a BasePrompt instance, configure it with terminal settings
             if isinstance(prompt, BasePrompt):
                 prompt.use_terminal = use_terminal
-                prompt.enable_multi_turn = enable_multi_turn
                 return prompt
             elif callable(prompt):
                 # For callable prompts, we'll pass the terminal settings via metadata
@@ -66,7 +64,6 @@ class PromptRegistry:
                 prompt = self._prompts[base_task]
                 if isinstance(prompt, BasePrompt):
                     prompt.use_terminal = True  # Force terminal mode for _terminal tasks
-                    prompt.enable_multi_turn = enable_multi_turn
                     return prompt
                 elif callable(prompt):
                     return prompt

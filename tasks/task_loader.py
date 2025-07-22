@@ -21,7 +21,6 @@ def load_task(task_name, custom_verifier_path=None, config=None):
     try:
         # Check if terminal mode is enabled via config
         use_terminal = getattr(config, 'use_terminal', False) if config else False
-        enable_multi_turn = getattr(config, 'enable_multi_turn', False) if config else False
         
         if use_terminal:
             # Load the base task first to get the dataset
@@ -35,8 +34,7 @@ def load_task(task_name, custom_verifier_path=None, config=None):
                 task_name=task_name,
                 dataset=base_dataset,
                 verifier_code=verifier_code,
-                config=config,
-                enable_multi_turn=enable_multi_turn
+                config=config
             )
             
             return terminal_task
@@ -146,24 +144,10 @@ class TerminalTaskWrapper(TerminalTaskBase):
     """
     Wrapper that converts any reasoning gym task into a terminal task.
     """
-    
-    def __init__(self, task_name, dataset, verifier_code, config=None, enable_multi_turn=False):
-        """
-        Initialize the terminal task wrapper.
-        
-        Args:
-            task_name: Name of the task
-            dataset: The original reasoning gym dataset
-            verifier_code: Python code for the verifier
-            config: Optional configuration object
-            enable_multi_turn: Whether to enable multi-turn mode
-        """
+    def __init__(self, task_name, dataset, verifier_code, config=None):
         self.task_name = task_name
         self.dataset = dataset
-        self.enable_multi_turn = enable_multi_turn
         self.max_turns = getattr(config, 'max_turns', 10) if config else 10
-        
-        # Initialize the base terminal task
         super().__init__(task_name, verifier_code, config)
     
     def __len__(self):

@@ -7,16 +7,8 @@ class AcrePrompt(BasePrompt):
     
     Formats the examples with command-based answers and uses the new prompt instructions.
     """
-    
-    def __init__(self, use_terminal=False, enable_multi_turn=False):
-        """
-        Initialize the ACRE prompt.
-        
-        Args:
-            use_terminal: Whether to use terminal mode
-            enable_multi_turn: Whether to enable multi-turn mode
-        """
-        super().__init__(use_terminal, enable_multi_turn)
+    def __init__(self, use_terminal=False):
+        super().__init__(use_terminal)
     
     def get_base_prompt(self, question: str, examples: list = None, metadata: dict = None) -> str:
         """
@@ -136,17 +128,11 @@ def prompt(question: str, examples: list = None, metadata: dict = None) -> str:
     """
     Function-based prompt for backward compatibility.
     """
-    # Check if we should use terminal mode based on metadata
     use_terminal = metadata.get('use_terminal', False) if metadata else False
-    enable_multi_turn = metadata.get('enable_multi_turn', False) if metadata else False
-    
-    print(f"DEBUG: prompt() called with use_terminal={use_terminal}, enable_multi_turn={enable_multi_turn}")
+    print(f"DEBUG: prompt() called with use_terminal={use_terminal}")
     print(f"DEBUG: metadata keys: {list(metadata.keys()) if metadata else 'None'}")
-    
-    prompt_instance = AcrePrompt(use_terminal=use_terminal, enable_multi_turn=enable_multi_turn)
+    prompt_instance = AcrePrompt(use_terminal=use_terminal)
     result = prompt_instance(question, examples, metadata)
-    
     print(f"DEBUG: prompt() returning result with length {len(result)}")
     print(f"DEBUG: result contains '<command>' = {'<command>' in result}")
-    
     return result 

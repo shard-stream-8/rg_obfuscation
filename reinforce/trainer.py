@@ -12,7 +12,6 @@ from .logit_processor import BatchThinkingTokenBudgetProcessor
 from .utils import zero_special_token_grads
 from .judge import JudgePenalty, RegexPenalty
 from prompts.terminal_prompts import (
-    get_initial_terminal_instructions,
     get_multi_turn_terminal_instructions,
     NO_COMMAND_MESSAGE,
     get_verifier_incorrect_message,
@@ -114,8 +113,7 @@ def load_custom_prompt(config: Config) -> Optional[Any]:
     if config.custom_prompt_path == "registry":
         try:
             use_terminal = getattr(config, 'use_terminal', False)
-            enable_multi_turn = getattr(config, 'enable_multi_turn', False)
-            custom_prompt = registry.get_prompt(config.task_name, use_terminal=use_terminal, enable_multi_turn=enable_multi_turn)
+            custom_prompt = registry.get_prompt(config.task_name, use_terminal=use_terminal)
             if custom_prompt is not None:
                 print(f"Loaded custom prompt for task '{config.task_name}' from registry")
             else:
@@ -132,12 +130,10 @@ def build_prompts(config: Config, batch: List[Dict], custom_prompt: Optional[Any
     """Build prompts for the batch."""
     if custom_prompt is not None:
         use_terminal = getattr(config, 'use_terminal', False)
-        enable_multi_turn = getattr(config, 'enable_multi_turn', False)
         prompts = [
             custom_prompt(b["question"], examples=None, metadata={
                 "task_name": config.task_name,
-                "use_terminal": use_terminal,
-                "enable_multi_turn": enable_multi_turn
+                "use_terminal": use_terminal
             }) if callable(custom_prompt) else custom_prompt(b["question"]) for b in batch
         ]
     elif hasattr(config, 'prompt_template') and config.prompt_template:
@@ -153,12 +149,8 @@ def build_prompts(config: Config, batch: List[Dict], custom_prompt: Optional[Any
 
     # Prepend terminal instructions if needed
     if getattr(config, 'use_terminal', False):
-        enable_multi_turn = getattr(config, 'enable_multi_turn', False)
-        if enable_multi_turn:
-            prompts = [get_multi_turn_terminal_instructions(p) for p in prompts]
-        else:
-            prompts = [get_initial_terminal_instructions(p) for p in prompts]
-
+        prompts = [get_multi_turn_terminal_instructions(p) for p in prompts]
+   
     return prompts
 
 
