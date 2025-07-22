@@ -1,4 +1,5 @@
 *.log
+*.out
 
 # Python cache files - ignore in all directories
 __pycache__/
@@ -79,3 +80,4 @@ dmypy.json
 # Project specific
 rollouts/
 wandb/
+nohup.out

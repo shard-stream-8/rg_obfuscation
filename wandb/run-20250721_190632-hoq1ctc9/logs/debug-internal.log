@@ -1,7 +1,0 @@
-{"time":"2025-07-21T19:06:32.867765006Z","level":"INFO","msg":"stream: starting","core version":"0.21.0"}
-{"time":"2025-07-21T19:06:33.26801616Z","level":"INFO","msg":"stream: created new stream","id":"hoq1ctc9"}
-{"time":"2025-07-21T19:06:33.268079599Z","level":"INFO","msg":"stream: started","id":"hoq1ctc9"}
-{"time":"2025-07-21T19:06:33.268123869Z","level":"INFO","msg":"writer: Do: started","stream_id":"hoq1ctc9"}
-{"time":"2025-07-21T19:06:33.268199171Z","level":"INFO","msg":"handler: started","stream_id":"hoq1ctc9"}
-{"time":"2025-07-21T19:06:33.268137888Z","level":"INFO","msg":"sender: started","stream_id":"hoq1ctc9"}
-{"time":"2025-07-21T19:29:19.252895667Z","level":"INFO","msg":"api: retrying HTTP error","status":502,"url":"https://api.wandb.ai/files/lukemarks/multiturn_island/hoq1ctc9/file_stream","body":"\n<html><head>\n<meta http-equiv=\"content-type\" content=\"text/html;charset=utf-8\">\n<title>502 Server Error</title>\n</head>\n<body text=#000000 bgcolor=#ffffff>\n<h1>Error: Server Error</h1>\n<h2>The server encountered a temporary error and could not complete your request.<p>Please try again in 30 seconds.</h2>\n<h2></h2>\n</body></html>\n"}
