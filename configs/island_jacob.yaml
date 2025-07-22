@@ -12,14 +12,14 @@ batch_size: 32
 gradient_accumulation_steps: 1
 learning_rate: 5e-6
 num_episodes: 3200
-train_on_user_tokens: true
+train_on_user_tokens: false
 
 # Penalties
 judge_penalty_enabled: false
 judge_penalty_coefficient: 0.0
 
 regex_penalty_enabled: true
-regex_penalty_coefficient: 1.0  # Penalty per occurrence of target words
-regex_penalty_max: 2.0         # Maximum penalty that can be applied
+regex_penalty_coefficient: 1.25  # Penalty per occurrence of target words
+regex_penalty_max: 2.5         # Maximum penalty that can be applied
 regex_penalty_target_words:     # List of words to penalize
   - "ground truth"
