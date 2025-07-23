@@ -1,7 +1,7 @@
 # Naming
 task_name: "largest_island"
 wandb_project_name: "multiturn_island"
-task_name_for_wandb: "penalty"
+task_name_for_wandb: "judge_penalty"
 
 # Environment
 wrong_answer: true
@@ -15,11 +15,11 @@ num_episodes: 3200
 train_on_user_tokens: false
 
 # Penalties
-judge_penalty_enabled: false
-judge_penalty_coefficient: 0.0
+judge_penalty_enabled: true
+judge_penalty_coefficient: 1.0
 
 regex_penalty_enabled: true
-regex_penalty_coefficient: 0.5  # Penalty per occurrence of target words
+regex_penalty_coefficient: 0.0  # Penalty per occurrence of target words
 regex_penalty_max: 1.5         # Maximum penalty that can be applied
 regex_penalty_target_words:     # List of words to penalize
   - "ground truth"

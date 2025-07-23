@@ -22,6 +22,7 @@ from tasks.task_loader import load_task
 from prompts.registry import registry
 from tasks.prompt_templates import create_custom_prompt
 from models.qwen3 import load_qwen3_model, prepare_thinking_input
+import asyncio
 
 class Config:
     def __init__(self, d):
@@ -502,6 +503,13 @@ def apply_wrong_answer(batch: List[Dict], config: Config, a: int = 0, b: int = 1
 # MAIN TRAINING FUNCTIONS
 # ============================================================================
 
+def _batch_judge_penalties(judge_penalty, prompts, contents, dialogues):
+    """Helper to run judge_penalty.calculate_penalty_with_score in parallel for a batch."""
+    async def _run_all():
+        coros = [judge_penalty.calculate_penalty_with_score(prompts[i], contents[i], dialogues[i]) for i in range(len(prompts))]
+        return await asyncio.gather(*coros)
+    return asyncio.run(_run_all())
+
 def train_multi_turn(config_path: str = "config.yaml") -> None:
     """Multi-turn training function for terminal-based tasks with batching support."""
     config = load_config(config_path)
@@ -555,6 +563,42 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             model, tokenizer, task, prompts, logit_processor, config, device, ground_truths
         )
 
+        # Prepare lists for judge penalty batch processing
+        judge_args = []
+        judge_cot_args = []
+        for episode_idx, episode_result in enumerate(episode_results):
+            if len(episode_result['episode_contents']) > 0:
+                judge_args.append((prompts[episode_idx], episode_result['episode_contents'][-1], episode_result['conversation_dialogue']))
+            else:
+                judge_args.append((prompts[episode_idx], '', episode_result['conversation_dialogue']))
+            # For CoT
+            if len(episode_result['episode_thinking_contents']) > 0:
+                judge_cot_args.append((prompts[episode_idx], episode_result['episode_thinking_contents'][-1], episode_result['conversation_dialogue']))
+            else:
+                judge_cot_args.append((prompts[episode_idx], '', episode_result['conversation_dialogue']))
+
+        # Batch judge penalty for outputs
+        if judge_penalty is not None:
+            judge_penalty_results = _batch_judge_penalties(
+                judge_penalty,
+                [a[0] for a in judge_args],
+                [a[1] for a in judge_args],
+                [a[2] for a in judge_args],
+            )
+        else:
+            judge_penalty_results = [(0.0, 0.0)] * len(episode_results)
+
+        # Batch judge penalty for CoT
+        if judge_penalty is not None:
+            judge_penalty_cot_results = _batch_judge_penalties(
+                judge_penalty,
+                [a[0] for a in judge_cot_args],
+                [a[1] for a in judge_cot_args],
+                [a[2] for a in judge_cot_args],
+            )
+        else:
+            judge_penalty_cot_results = [(0.0, 0.0)] * len(episode_results)
+
         # Collect all episode rewards first to calculate batch-level advantage
         batch_rewards = []
         episode_data_list = []
@@ -566,15 +610,9 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             thinking_penalties = [0.0]
             penalized_rewards = [episode_result['final_reward']]
 
-            # Apply judge penalty if enabled (only on final content, not CoT)
-            judge_penalty_value = 0.0
-            judge_score = 0.0
-            if judge_penalty is not None and len(episode_result['episode_contents']) > 0:
-                judge_penalty_value, judge_score = judge_penalty.calculate_penalty_sync_with_score(
-                    prompts[episode_idx], episode_result['episode_contents'][-1], 
-                    episode_result['conversation_dialogue']
-                )
-                penalized_rewards[0] -= judge_penalty_value
+            # Use batch judge penalty results
+            judge_penalty_value, judge_score = judge_penalty_results[episode_idx]
+            penalized_rewards[0] -= judge_penalty_value
 
             # Apply regex penalty if enabled (only on final content, not CoT)
             regex_penalty_value = 0.0
@@ -589,30 +627,17 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     regex_word_count = sum(v['count'] for v in regex_word_penalties.values())
                 penalized_rewards[0] -= regex_penalty_value
 
-            # Calculate judge and regex penalties on CoT for logging only (not applied to rewards)
-            judge_penalty_cot = 0.0
-            judge_score_cot = 0.0
+            # Use batch judge penalty results for CoT
+            judge_penalty_cot, judge_score_cot = judge_penalty_cot_results[episode_idx]
             regex_penalty_cot = 0.0
             regex_word_count_cot = 0
-            
-            if len(episode_result['episode_thinking_contents']) > 0:
-                # Calculate judge penalty on CoT
-                
-                if judge_penalty is not None:
-                    # TODO: fix this
-                    judge_penalty_cot, judge_score_cot = judge_penalty.calculate_penalty_sync_with_score(
-                        prompts[episode_idx], episode_result['episode_thinking_contents'][-1], 
-                        episode_result['conversation_dialogue']
-                    )
-                
-                # Calculate regex penalty on CoT
-                if regex_penalty is not None:
-                    regex_penalty_cot, regex_word_penalties_cot = regex_penalty.calculate_penalty_cot_only(
-                        prompts[episode_idx], episode_result['episode_thinking_contents'][-1],
-                        episode_result['conversation_dialogue']
-                    )
-                    if regex_word_penalties_cot:
-                        regex_word_count_cot = sum(v['count'] for v in regex_word_penalties_cot.values())
+            if len(episode_result['episode_thinking_contents']) > 0 and regex_penalty is not None:
+                regex_penalty_cot, regex_word_penalties_cot = regex_penalty.calculate_penalty_cot_only(
+                    prompts[episode_idx], episode_result['episode_thinking_contents'][-1],
+                    episode_result['conversation_dialogue']
+                )
+                if regex_word_penalties_cot:
+                    regex_word_count_cot = sum(v['count'] for v in regex_word_penalties_cot.values())
 
             # Store episode data for later processing
             episode_data = {
