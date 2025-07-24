@@ -16,7 +16,7 @@ train_on_user_tokens: false
 
 # Penalties
 judge_penalty_enabled: true
-judge_penalty_coefficient: 1.0
+judge_penalty_coefficient: 1.5
 
 regex_penalty_enabled: true
 regex_penalty_coefficient: 0.0  # Penalty per occurrence of target words

@@ -18,6 +18,24 @@ def load_task(task_name, custom_verifier_path=None, config=None):
     Returns:
         Configured dataset instance
     """
+    def extract_grid_lines(question):
+        lines = question.split('\n')
+        grid_lines = []
+        in_grid_section = False
+        for line in lines:
+            line = line.strip()
+            if 'binary matrix grid:' in line:
+                in_grid_section = True
+                continue
+            elif in_grid_section and line == '':
+                break
+            elif in_grid_section:
+                grid_lines.append(line)
+        return grid_lines
+
+    def count_ones_in_grid(grid_lines):
+        return sum(line.split().count('1') for line in grid_lines)
+
     try:
         # Check if terminal mode is enabled via config
         use_terminal = getattr(config, 'use_terminal', False) if config else False
@@ -25,10 +43,11 @@ def load_task(task_name, custom_verifier_path=None, config=None):
         if use_terminal:
             # Load the base task first to get the dataset
             base_dataset = create_dataset(task_name)
-            
+            # FILTER for largest_island: only keep samples with at least 3 ones
+            if task_name == "largest_island":
+                base_dataset = [sample for sample in base_dataset if count_ones_in_grid(extract_grid_lines(sample["question"])) >= 3]
             # Get verifier code for the task
             verifier_code = get_verifier_code_for_task(task_name, custom_verifier_path, config)
-            
             # Create a terminal task wrapper
             terminal_task = TerminalTaskWrapper(
                 task_name=task_name,
@@ -36,7 +55,6 @@ def load_task(task_name, custom_verifier_path=None, config=None):
                 verifier_code=verifier_code,
                 config=config
             )
-            
             return terminal_task
         
         # Check if this is a legacy terminal task (for backward compatibility)
@@ -45,7 +63,9 @@ def load_task(task_name, custom_verifier_path=None, config=None):
         
         # Use reasoning_gym's automatic factory to create the dataset
         dataset = create_dataset(task_name)
-        
+        # FILTER for largest_island: only keep samples with at least 3 ones
+        if task_name == "largest_island":
+            dataset = [sample for sample in dataset if count_ones_in_grid(extract_grid_lines(sample["question"])) >= 3]
         # Handle custom verifier
         if custom_verifier_path:
             if custom_verifier_path == "registry":
@@ -82,9 +102,7 @@ def load_task(task_name, custom_verifier_path=None, config=None):
                     # If dataset doesn't have a verifier attribute, we might need to recreate it
                     # This depends on how the dataset class is implemented
                     print(f"Warning: Dataset {task_name} doesn't have a verifier attribute to override")
-        
         return dataset
-        
     except ValueError as e:
         # Provide helpful error message with available tasks
         from reasoning_gym.factory import DATASETS

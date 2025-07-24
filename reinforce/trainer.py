@@ -554,7 +554,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
         batch_indices = [random.randrange(len(task)) for _ in range(batch_size)]
         batch = [task[idx] for idx in batch_indices]
         # Optionally perturb answers if wrong_answer flag is enabled
-        apply_wrong_answer(batch, config)
+        apply_wrong_answer(batch, config, a=0, b=1)
         prompts = build_prompts(config, batch, custom_prompt)
         ground_truths = [b['answer'] for b in batch]
 

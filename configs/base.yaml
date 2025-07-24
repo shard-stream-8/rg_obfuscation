@@ -31,7 +31,7 @@ hf_repo_out: null
 # judge penalty configuration
 judge_penalty_enabled: true
 judge_penalty_coefficient: 1.0
-judge_model: "gpt-4o-mini"
+judge_model: "gpt-4.1-mini"
 
 # regex penalty configuration
 regex_penalty_enabled: false
