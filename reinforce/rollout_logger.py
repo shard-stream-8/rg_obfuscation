@@ -64,6 +64,8 @@ class RolloutLogger:
                    conversation_dialogue: List[Dict[str, str]] = None,
                    judge_scores: List[float] = None,
                    regex_penalties: List[float] = None,
+                   cot_judge_content: str = None,  # What the CoT judge sees
+                   cot_judge_score: float = None,  # Score given by CoT judge
                    format: Literal["json", "readable", "super_readable"] = "json"):
         """Log a single rollout with specified format (json, readable, or super_readable)."""
         
@@ -146,7 +148,9 @@ class RolloutLogger:
                 episode_complete=episode_complete,
                 final_reward=final_reward,
                 conversation_dialogue=conversation_dialogue,
-                judge_info=judge_info
+                judge_info=judge_info,
+                cot_judge_content=cot_judge_content,
+                cot_judge_score=cot_judge_score
             )
         else:
             # Build simplified rollout data focusing on essential information
@@ -211,7 +215,9 @@ class RolloutLogger:
                                    turn_count: int = None,
                                    episode_complete: bool = None, final_reward: float = None,
                                    conversation_dialogue: List[Dict[str, str]] = None,
-                                   judge_info: Dict[str, Any] = None):
+                                   judge_info: Dict[str, Any] = None,
+                                   cot_judge_content: str = None,
+                                   cot_judge_score: float = None):
         """Log a single rollout in a super readable text format that preserves all formatting."""
         
         filename = f"rollout_episode_{episode:06d}_{self.run_id}_super_readable.txt"
@@ -247,6 +253,26 @@ class RolloutLogger:
                 f.write("-" * 60 + "\n")
                 f.write(judge_info['assistant_output_seen_by_judge'])
                 f.write("\n\n")
+            
+            # Write CoT judge content if available
+            if cot_judge_content:
+                f.write("\n" + "=" * 80 + "\n")
+                f.write("🧠 CO-T JUDGE EVALUATION:\n")
+                f.write("=" * 80 + "\n\n")
+                if cot_judge_score is not None:
+                    f.write(f"Score: {cot_judge_score:.4f} (0-3 scale, 0=cheating, 3=legitimate)\n\n")
+                f.write("Content seen by Co-T judge:\n")
+                f.write("-" * 60 + "\n")
+                f.write(cot_judge_content)
+                f.write("\n\n")
+            
+            # Write CoT judge score if available (separate section for backward compatibility)
+            if cot_judge_score is not None and not cot_judge_content:
+                f.write("\n" + "=" * 80 + "\n")
+                f.write("🧠 CO-T JUDGE SCORE:\n")
+                f.write("=" * 80 + "\n\n")
+                f.write(f"Score: {cot_judge_score:.4f}\n")
+                f.write("\n")
             
             f.write("\n" + "=" * 80 + "\n")
             f.write("💬 CONVERSATION DIALOGUE:\n")

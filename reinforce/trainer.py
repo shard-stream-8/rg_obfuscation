@@ -621,6 +621,13 @@ def _batch_judge_penalties(judge_penalty, prompts, contents, dialogues):
         return await asyncio.gather(*coros)
     return asyncio.run(_run_all())
 
+def _batch_judge_penalties_cot(judge_penalty, prompts, cot_contents, cot_dialogues):
+    """Helper to run judge_penalty.calculate_penalty_cot_with_score in parallel for a batch."""
+    async def _run_all():
+        coros = [judge_penalty.calculate_penalty_cot_with_score(prompts[i], cot_contents[i], cot_dialogues[i]) for i in range(len(prompts))]
+        return await asyncio.gather(*coros)
+    return asyncio.run(_run_all())
+
 def train_multi_turn(config_path: str = "config.yaml") -> None:
     """Multi-turn training function for terminal-based tasks with batching support."""
     config = load_config(config_path)
@@ -684,11 +691,11 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 judge_args.append((prompts[episode_idx], episode_result['episode_contents'][-1], episode_result['conversation_dialogue']))
             else:
                 judge_args.append((prompts[episode_idx], '', episode_result['conversation_dialogue']))
-            # For CoT
+            # For CoT: pass CoT string as response, and None for conversation_dialogue so judge evaluates only the CoT
             if len(episode_result['episode_thinking_contents']) > 0:
-                judge_cot_args.append((prompts[episode_idx], episode_result['episode_thinking_contents'][-1], episode_result['conversation_dialogue']))
+                judge_cot_args.append((prompts[episode_idx], episode_result['episode_thinking_contents'][-1], None))
             else:
-                judge_cot_args.append((prompts[episode_idx], '', episode_result['conversation_dialogue']))
+                judge_cot_args.append((prompts[episode_idx], '', None))
 
         # Batch judge penalty for outputs
         if judge_penalty is not None:
@@ -701,13 +708,27 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
         else:
             judge_penalty_results = [(0.0, 0.0)] * len(episode_results)
 
-        # Batch judge penalty for CoT
+        # Batch judge penalty for CoT (async, memory efficient)
         if judge_penalty is not None:
-            judge_penalty_cot_results = _batch_judge_penalties(
+            # Prepare CoT contents for batch processing
+            cot_prompts = []
+            cot_contents = []
+            cot_dialogues = []
+            for episode_idx, episode_result in enumerate(episode_results):
+                cot_prompts.append(prompts[episode_idx])
+                if len(episode_result['episode_thinking_contents']) > 0:
+                    cot_contents.append(episode_result['episode_thinking_contents'][-1])
+                else:
+                    cot_contents.append('')
+                # Pass conversation_dialogue so CoT judge can see all turns
+                cot_dialogues.append(episode_result['conversation_dialogue'])
+            
+            # Use the new batched CoT judge penalty calculation
+            judge_penalty_cot_results = _batch_judge_penalties_cot(
                 judge_penalty,
-                [a[0] for a in judge_cot_args],
-                [a[1] for a in judge_cot_args],
-                [a[2] for a in judge_cot_args],
+                cot_prompts,
+                cot_contents,
+                cot_dialogues
             )
         else:
             judge_penalty_cot_results = [(0.0, 0.0)] * len(episode_results)
@@ -723,9 +744,11 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             thinking_penalties = [0.0]
             penalized_rewards = [episode_result['final_reward']]
 
-            # Use batch judge penalty results
+            # Use batch judge penalty results (output only)
             judge_penalty_value, judge_score = judge_penalty_results[episode_idx]
-            penalized_rewards[0] -= judge_penalty_value
+            # Only apply output judge penalty if not disabled in config
+            if not getattr(config, 'judge_output_penalty_disabled', False):
+                penalized_rewards[0] -= judge_penalty_value
 
             # Apply regex penalty if enabled (only on final content, not CoT)
             regex_penalty_value = 0.0
@@ -740,7 +763,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     regex_word_count = sum(v['count'] for v in regex_word_penalties.values())
                 penalized_rewards[0] -= regex_penalty_value
 
-            # Use batch judge penalty results for CoT
+            # Use batch judge penalty results for CoT (logging only, never used in reward)
             judge_penalty_cot, judge_score_cot = judge_penalty_cot_results[episode_idx]
             regex_penalty_cot = 0.0
             regex_word_count_cot = 0
@@ -752,6 +775,11 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 if regex_word_penalties_cot:
                     regex_word_count_cot = sum(v['count'] for v in regex_word_penalties_cot.values())
 
+            # Extract what the CoT judge sees for logging
+            cot_judge_content = ""
+            if judge_penalty is not None and episode_result['conversation_dialogue']:
+                cot_judge_content = judge_penalty._extract_cot_dialogue(episode_result['conversation_dialogue'])
+
             # Store episode data for later processing
             episode_data = {
                 'episode_idx': episode_idx,
@@ -759,15 +787,16 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 'base_rewards': base_rewards,
                 'penalties': penalties,
                 'thinking_penalties': thinking_penalties,
-                'penalized_rewards': penalized_rewards,
+                'penalized_rewards': penalized_rewards,  # Only output penalty used
                 'judge_penalty_value': judge_penalty_value,
                 'judge_score': judge_score,
                 'regex_penalty_value': regex_penalty_value,
                 'regex_word_count': regex_word_count,
-                'judge_penalty_cot': judge_penalty_cot,
+                'judge_penalty_cot': judge_penalty_cot,  # Only for logging
                 'judge_score_cot': judge_score_cot,
                 'regex_penalty_cot': regex_penalty_cot,
                 'regex_word_count_cot': regex_word_count_cot,
+                'cot_judge_content': cot_judge_content,  # What the CoT judge sees
                 'prompt': prompts[episode_idx],
                 'batch_item': batch[episode_idx]
             }
@@ -868,6 +897,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                 'judge_score_cot': episode_data['judge_score_cot'],
                 'regex_penalty_cot': episode_data['regex_penalty_cot'],
                 'regex_word_count_cot': episode_data['regex_word_count_cot'],
+                'cot_judge_content': episode_data['cot_judge_content'],  # What the CoT judge sees
                 'loss': loss,
                 'turn_count': episode_result['turn_count'],
                 'episode_complete': episode_result['episode_complete'],
@@ -958,6 +988,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     "task_reward_mean_regex_zero": mean_task_reward_regex_zero,
                     "task_reward_mean_regex_nonzero": mean_task_reward_regex_nonzero,
                     "max_turns": getattr(config, 'max_turns', 10),
+                    "judge_output_penalty_disabled": getattr(config, 'judge_output_penalty_disabled', False),
             }, step=batch_idx)
 
             # Log rollouts in multiple formats
@@ -979,6 +1010,8 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     thinking_word_counts=[{}],
                     judge_scores=episode_data.get('judge_scores', []),
                     regex_penalties=episode_data.get('regex_penalties', []),
+                    cot_judge_content=episode_data.get('cot_judge_content', ''),  # What the CoT judge sees
+                    cot_judge_score=episode_data.get('judge_score_cot', None),  # Score given by CoT judge
                     turn_count=episode_data['turn_count'],
                     episode_complete=episode_data['episode_complete'],
                     final_reward=episode_data['final_reward'],

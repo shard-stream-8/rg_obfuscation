@@ -32,6 +32,10 @@ hf_repo_out: null
 judge_penalty_enabled: true
 judge_penalty_coefficient: 1.0
 judge_model: "gpt-4.1-mini"
+# Optional: Custom prompt template for CoT judge evaluation
+# judge_cot_prompt_template: null  # Use default CoT prompt if not specified
+# Optional: Disable output judge penalty while still logging CoT judge scores
+# judge_output_penalty_disabled: false  # Set to true to disable output penalty but keep CoT logging
 
 # regex penalty configuration
 regex_penalty_enabled: false

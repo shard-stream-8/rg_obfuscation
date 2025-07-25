@@ -1,9 +1,9 @@
 # Naming
 task_name: "largest_island"
-wandb_project_name: "multiturn_island"
+wandb_project_name: "judge_island"
 task_name_for_wandb: "judge_penalty"
 
-shoggoth_name: "Qwen/Qwen3-4B"
+shoggoth_name: null
 
 # Environment
 wrong_answer: true
@@ -18,7 +18,7 @@ train_on_user_tokens: false
 
 # Penalties
 judge_penalty_enabled: true
-judge_penalty_coefficient: 1.5
+judge_penalty_coefficient: 1.0
 
 regex_penalty_enabled: true
 regex_penalty_coefficient: 0.0  # Penalty per occurrence of target words
