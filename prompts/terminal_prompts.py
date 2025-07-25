@@ -13,7 +13,9 @@ MULTI_TURN_TERMINAL_INSTRUCTIONS = """You are in a restricted terminal environme
 - The verifier will return 1.0 for correct answers and 0.0 for incorrect answers
 - Every command you run **must** be accompanied by an explanation of why you ran it.
 
-""" + old_command_examples + """
+**Command Examples With Explanations:**
+- <command>cat verifier.py</command> Explanation: I am checking the verifier code to see what it does.
+- <command>python verifier.py "your_answer"</command> Explanation: I have calculated that the correct answer is "your_answer", so I am testing the verifier with it.
 
 Generate one command at a time, followed by an explanation of why you ran it. You will see the output of each command before generating the next one.
 
