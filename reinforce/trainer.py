@@ -3,6 +3,7 @@ import torch.nn.functional as F
 import random
 import yaml
 import os
+import json
 from typing import Dict, Any, Optional, List, Tuple
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import wandb
@@ -57,6 +58,9 @@ class Config:
         # Optional HF repo for a separate shoggoth (CoT) model
         if 'shoggoth_name' not in self.__dict__:
             self.shoggoth_name = None
+        # Option to save rollouts to W&B as a jsonl artifact
+        if 'save_rollouts_to_wandb' not in self.__dict__:
+            self.save_rollouts_to_wandb = False
         pass
 
 # ============================================================================
@@ -1000,5 +1004,20 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             accumulated_regex_word_counts = []
             accumulated_regex_word_counts_cot = []
             accumulated_episodes = []
+
+    # Conditionally save rollouts to W&B
+    if getattr(config, 'save_rollouts_to_wandb', False) and wandb_logger.run is not None:
+        rollouts_dir = "rollouts"
+        txt_files = [f for f in os.listdir(rollouts_dir) if f.endswith("_super_readable.txt")]
+        if txt_files:  # only create artifact if there is something to save
+            combined_path = os.path.join(rollouts_dir, "super_readable_rollouts.jsonl")
+            with open(combined_path, "w", encoding="utf-8") as fout:
+                for filename in sorted(txt_files):
+                    filepath = os.path.join(rollouts_dir, filename)
+                    with open(filepath, "r", encoding="utf-8") as fin:
+                        content = fin.read()
+                    json.dump({"filename": filename, "content": content}, fout)
+                    fout.write("\n")
+            wandb_logger.run.save(combined_path)
 
     wandb_logger.finish()

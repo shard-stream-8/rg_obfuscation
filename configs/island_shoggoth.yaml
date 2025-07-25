@@ -2,6 +2,7 @@
 task_name: "largest_island"
 wandb_project_name: "multiturn_island"
 task_name_for_wandb: "shoggoth"
+save_rollouts_to_wandb: true
 
 shoggoth_name: "Qwen/Qwen3-4B"
 
