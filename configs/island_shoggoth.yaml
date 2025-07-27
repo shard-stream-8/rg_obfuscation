@@ -1,8 +1,10 @@
 # Naming
 task_name: "largest_island"
 wandb_project_name: "multiturn_island"
-task_name_for_wandb: "shoggoth"
+task_name_for_wandb: "severed_shog"
 save_rollouts_to_wandb: true
+
+sever_gradients: true
 
 shoggoth_name: "Qwen/Qwen3-4B"
 
@@ -15,7 +17,6 @@ batch_size: 8
 gradient_accumulation_steps: 4
 learning_rate: 5e-6
 num_episodes: 3200
-train_on_user_tokens: false
 
 # Penalties
 judge_penalty_enabled: false
