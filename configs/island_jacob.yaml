@@ -12,13 +12,14 @@ max_turns: 2
 # Training
 batch_size: 32
 gradient_accumulation_steps: 1
-learning_rate: 5e-6
-num_episodes: 3200
+learning_rate: 1e-6
+num_episodes: 10000
 train_on_user_tokens: false
 
 # Penalties
 judge_penalty_enabled: true
-judge_penalty_coefficient: 1.0
+judge_penalty_coefficient: 0.75
+judge_output_penalty_disabled: true
 
 regex_penalty_enabled: true
 regex_penalty_coefficient: 0.0  # Penalty per occurrence of target words
