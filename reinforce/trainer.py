@@ -50,17 +50,15 @@ class Config:
         # Ensure the wrong answer flag always exists so downstream code can rely on it
         if 'wrong_answer' not in self.__dict__:
             self.wrong_answer = False
-        # By default we only backprop through assistant tokens.  A user can set this flag
-        # in the YAML config to also include **user** tokens so gradients flow through the
-        # entire multi-turn conversation.
-        if 'train_on_user_tokens' not in self.__dict__:
-            self.train_on_user_tokens = False
         # Optional HF repo for a separate shoggoth (CoT) model
         if 'shoggoth_name' not in self.__dict__:
             self.shoggoth_name = None
         # Option to save rollouts to W&B as a jsonl artifact
         if 'save_rollouts_to_wandb' not in self.__dict__:
             self.save_rollouts_to_wandb = False
+        # If True, chain-of-thought gradients are severed as described in RL loss
+        if 'sever_gradients' not in self.__dict__:
+            self.sever_gradients = False
         pass
 
 # ============================================================================
@@ -265,34 +263,58 @@ def calculate_rewards_and_penalties(task: Any, batch: List[Dict], contents: List
 
     return base_rewards, penalties, thinking_penalties, penalized_rewards, judge_penalties, judge_scores, regex_penalties
 
-def perform_training_step(model: Any, optimizer: Any, advantage: torch.Tensor,
-                        logits: torch.Tensor, target_tokens: torch.Tensor, mask: torch.Tensor,
-                        config: Config, gradient_accumulation_steps: int, input_ids: torch.Tensor = None) -> Tuple[float, float]:
+def perform_training_step(model: Any, optimizer: Any, total_advantage: torch.Tensor,
+                        task_advantage: Optional[torch.Tensor], logits: torch.Tensor, target_tokens: torch.Tensor, mask: torch.Tensor,
+                        think_mask: Optional[torch.Tensor], config: Config, gradient_accumulation_steps: int, input_ids: torch.Tensor = None) -> Tuple[float, float]:
     """Perform the actual training step."""
     model.train()
 
-    # Compute log-probs
+    # Compute log-probs ---------------------------------------------------
     policy_log_probs = torch.log_softmax(logits[:, :-1], dim=-1)
     logp_taken = policy_log_probs.gather(-1, target_tokens.unsqueeze(-1)).squeeze(-1)
-    
-    # Average log-prob over response positions
-    logp_per_seq = (logp_taken * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-8)
 
-    # Compute loss using the provided advantage
-    if advantage.dim() == 0 or logp_per_seq.dim() == 0 or advantage.shape[0] == 0 or logp_per_seq.shape[0] == 0 or advantage.numel() == 0 or logp_per_seq.numel() == 0:
-        return 0
-    else:
-        loss = -(advantage * logp_per_seq).mean() / gradient_accumulation_steps
+    # --------------------------------------------------------------------
+    # Choose loss formulation based on sever_gradients flag
+    # --------------------------------------------------------------------
+    if not getattr(config, "sever_gradients", False):
+        # Legacy path -----------------------------------------------------
+        logp_per_seq = (logp_taken * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-8)
+
+        if total_advantage.dim() == 0 or logp_per_seq.dim() == 0 or total_advantage.numel() == 0 or logp_per_seq.numel() == 0:
+            return 0
+
+        loss = -(total_advantage * logp_per_seq).mean() / gradient_accumulation_steps
         loss.backward()
         return loss.item() * gradient_accumulation_steps
+
+    # New sever_gradients path ------------------------------------------
+    assert think_mask is not None, "think_mask must be provided when sever_gradients is True"
+    assert task_advantage is not None, "task_advantage must be provided when sever_gradients is True"
+
+    # Separate thinking vs output masks (ensure same dtype)
+    think_mask_bool = think_mask.bool() & mask
+    output_mask_bool = (~think_mask_bool) & mask
+
+    # Handle sequences with zero tokens in a segment gracefully
+    def _safe_avg(numer, denom_mask):
+        denom = denom_mask.sum(dim=1)
+        return (numer * denom_mask).sum(dim=1) / (denom + 1e-8)
+
+    logp_thinking = _safe_avg(logp_taken, think_mask_bool)
+    logp_output   = _safe_avg(logp_taken, output_mask_bool)
+
+    loss_seq = -(total_advantage * logp_output + task_advantage * logp_thinking)
+    loss = loss_seq.mean() / gradient_accumulation_steps
+    loss.backward()
+    return loss.item() * gradient_accumulation_steps
 
 # ============================================================
 # Dual-model training step (face + shoggoth)
 # ============================================================
 
-def perform_training_step_dual(face_model: Any, shoggoth_model: Any, optimizer: Any, advantage: torch.Tensor,
-                               target_tokens: torch.Tensor, mask: torch.Tensor, think_mask: torch.Tensor,
-                               gradient_accumulation_steps: int, input_ids: torch.Tensor) -> float:
+def perform_training_step_dual(face_model: Any, shoggoth_model: Any, optimizer: Any, total_advantage: torch.Tensor,
+                               task_advantage: Optional[torch.Tensor], target_tokens: torch.Tensor, mask: torch.Tensor, think_mask: torch.Tensor,
+                               gradient_accumulation_steps: int, input_ids: torch.Tensor, config: Config) -> float:
     """Training step that mixes logits from face and shoggoth models.
 
     The `think_mask` tells which positions (whose NEXT token) were generated by the shoggoth model.
@@ -314,17 +336,39 @@ def perform_training_step_dual(face_model: Any, shoggoth_model: Any, optimizer: 
     logp_face_taken = logp_face.gather(-1, target_tokens.unsqueeze(-1)).squeeze(-1)
     logp_shog_taken = logp_shog.gather(-1, target_tokens.unsqueeze(-1)).squeeze(-1)
 
-    # Select according to think_mask (bool)
-    combined_logp_taken = torch.where(think_mask.bool(), logp_shog_taken, logp_face_taken)
+    think_mask_bool = think_mask.bool()
 
-    # Average over selected positions
-    logp_per_seq = (combined_logp_taken * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-8)
+    # --------------------------------------------------------------------
+    # Choose loss path depending on sever_gradients
+    # --------------------------------------------------------------------
+    if not getattr(config, "sever_gradients", False):
+        # Mixed logp from selected model per token
+        combined_logp_taken = torch.where(think_mask_bool, logp_shog_taken, logp_face_taken)
+        logp_per_seq = (combined_logp_taken * mask).sum(dim=1) / (mask.sum(dim=1) + 1e-8)
 
-    # Compute loss -------------------------------------------------------
-    if advantage.dim() == 0 or logp_per_seq.dim() == 0 or advantage.shape[0] == 0 or logp_per_seq.shape[0] == 0:
-        return 0.0
+        if total_advantage.dim() == 0 or logp_per_seq.dim() == 0 or total_advantage.numel() == 0 or logp_per_seq.numel() == 0:
+            return 0.0
 
-    loss = -(advantage * logp_per_seq).mean() / gradient_accumulation_steps
+        loss = -(total_advantage * logp_per_seq).mean() / gradient_accumulation_steps
+        loss.backward()
+        return loss.item() * gradient_accumulation_steps
+
+    # Sever gradients path ----------------------------------------------
+    assert task_advantage is not None, "task_advantage must be provided when sever_gradients is True"
+
+    # Separate averages for thinking (shoggoth) and output (face)
+    def _safe_avg(values, mask_part):
+        denom = mask_part.sum(dim=1)
+        return (values * mask_part).sum(dim=1) / (denom + 1e-8)
+
+    mask_thinking = think_mask_bool & mask
+    mask_output = (~think_mask_bool) & mask
+
+    logp_thinking = _safe_avg(logp_shog_taken, mask_thinking)
+    logp_output = _safe_avg(logp_face_taken, mask_output)
+
+    loss_seq = -(total_advantage * logp_output + task_advantage * logp_thinking)
+    loss = loss_seq.mean() / gradient_accumulation_steps
     loss.backward()
     return loss.item() * gradient_accumulation_steps
 
@@ -473,23 +517,50 @@ def run_batched_multi_turn_episodes(face_model: Any, tokenizer: Any, task: Any, 
         pad_id = tokenizer.pad_token_id if tokenizer.pad_token_id is not None else -1
         nonpad_mask = (generated_ids[:, 1:] != pad_id)  # shape [B, seq_len]
 
-        # Combine according to configuration
-        if getattr(config, 'train_on_user_tokens', False):
-            mask = nonpad_mask  # all real tokens (user + assistant)
-        else:
-            mask = baseline_mask & nonpad_mask  # assistant tokens only, no pads
+        # Combine masks: always train on assistant tokens only (user tokens excluded)
+        mask = baseline_mask & nonpad_mask  # assistant tokens only, no pads
 
-        
+        # ------------------------------------------------------------------
+        # Derive think_mask for single-model path if needed
+        # ------------------------------------------------------------------
+        if think_mask_batch is None:
+            # Build a boolean mask marking positions whose *next* token is part
+            # of the <think>…</think> chain-of-thought.  This is needed for the
+            # sever_gradients option.
+            start_think_id = tokenizer.encode("<think>", add_special_tokens=False)[0]
+            end_think_id = tokenizer.encode("</think>", add_special_tokens=False)[0]
+
+            think_mask_list = []
+            for i in range(generated_ids.size(0)):
+                seq = generated_ids[i]
+                seq_len_plus1 = seq.size(0)
+                seq_len = seq_len_plus1 - 1  # logits length
+                t_mask = torch.zeros(seq_len, dtype=torch.bool, device=device)
+
+                inside = False
+                # Iterate over token positions whose logits contributed to the
+                # NEXT token (hence up to seq_len-1)
+                for pos in range(prompt_len, seq_len_plus1 - 1):
+                    token_id = seq[pos].item()
+                    if token_id == start_think_id:
+                        inside = True
+                        # The NEXT token will be inside CoT; current pos is tag
+                        continue
+                    if token_id == end_think_id:
+                        inside = False
+                    if inside:
+                        t_mask[pos] = True
+                think_mask_list.append(t_mask)
+
+            think_mask_batch = torch.stack(think_mask_list, dim=0)
+
+         
         # Store training data for each episode
         for i, episode_idx in enumerate(active_indices):
             episode_results[episode_idx]['turn_target_tokens'].append(generated_ids[i:i+1, 1:])
             episode_results[episode_idx]['turn_masks'].append(mask[i:i+1])
             episode_results[episode_idx]['turn_input_ids'].append(generated_ids[i:i+1])
-            if think_mask_batch is not None:
-                episode_results[episode_idx]['turn_think_masks'].append(think_mask_batch[i:i+1])
-            else:
-                # append zeros so list length matches
-                episode_results[episode_idx]['turn_think_masks'].append(torch.zeros_like(mask[i:i+1], dtype=torch.bool))
+            episode_results[episode_idx]['turn_think_masks'].append(think_mask_batch[i:i+1])
 
         
         # Process each active episode
@@ -734,7 +805,8 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             judge_penalty_cot_results = [(0.0, 0.0)] * len(episode_results)
 
         # Collect all episode rewards first to calculate batch-level advantage
-        batch_rewards = []
+        batch_rewards = []  # penalized reward (task + penalties)
+        batch_task_rewards_list = []  # pure task rewards (base)
         episode_data_list = []
         
         for episode_idx, episode_result in enumerate(episode_results):
@@ -802,12 +874,18 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             }
             episode_data_list.append(episode_data)
             batch_rewards.extend(penalized_rewards)
+            batch_task_rewards_list.extend(base_rewards)
         
         # Calculate batch-level advantage
         batch_rewards_tensor = torch.tensor(batch_rewards, dtype=torch.float32, device=device)
-        batch_baseline = batch_rewards_tensor.mean().detach()
-        batch_advantages = batch_rewards_tensor - batch_baseline
-        
+        batch_task_rewards_tensor = torch.tensor(batch_task_rewards_list, dtype=torch.float32, device=device)
+
+        batch_baseline_total = batch_rewards_tensor.mean().detach()
+        batch_baseline_task  = batch_task_rewards_tensor.mean().detach()
+
+        batch_advantages_total = batch_rewards_tensor - batch_baseline_total
+        batch_advantages_task  = batch_task_rewards_tensor - batch_baseline_task
+
         # Now process each episode with the correct advantage
         for episode_data in episode_data_list:
             episode_idx = episode_data['episode_idx']
@@ -819,23 +897,19 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
             thinking_penalties = torch.tensor(episode_data['thinking_penalties'], dtype=torch.float32, device=device)
             rewards = torch.tensor(episode_data['penalized_rewards'], dtype=torch.float32, device=device)
             
-            # Get the advantage for this episode
-            episode_advantage = batch_advantages[episode_idx:episode_idx+1]
+            # Get the advantages for this episode
+            total_advantage_ep = batch_advantages_total[episode_idx:episode_idx+1]
+            task_advantage_ep  = batch_advantages_task[episode_idx:episode_idx+1]
 
             # Training step - train on all turns of the episode
             if ((batch_idx * batch_size + episode_idx) % gradient_accumulation_steps) == 0:
                 optimizer.zero_grad()
 
-            # Determine which turns to backprop through.  If `train_on_user_tokens` is
-            # enabled, the *final* turn already contains the full conversation context,
-            # so one forward/backward pass is sufficient and more efficient.
+            # Determine which turns to backprop through. Training on assistant tokens only
             total_loss = 0.0
             num_turns = len(episode_result['turn_input_ids'])
 
-            if getattr(config, 'train_on_user_tokens', False):
-                selected_turn_indices = [num_turns - 1] if num_turns > 0 else []
-            else:
-                selected_turn_indices = range(num_turns)
+            selected_turn_indices = range(num_turns)
 
             for turn_idx in selected_turn_indices:
                 # Get training data for this turn
@@ -847,7 +921,7 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                     # Single-model path ---------------------------------------------------
                     logits = face_model(input_ids).logits
                     turn_loss = perform_training_step(
-                        face_model, optimizer, episode_advantage, logits, target_tokens, mask, config, gradient_accumulation_steps, input_ids
+                        face_model, optimizer, total_advantage_ep, task_advantage_ep, logits, target_tokens, mask, episode_result['turn_think_masks'][turn_idx].to(device), config, gradient_accumulation_steps, input_ids
                     )
                 else:
                     # Dual-model path -----------------------------------------------------
@@ -856,12 +930,14 @@ def train_multi_turn(config_path: str = "config.yaml") -> None:
                         face_model,
                         shoggoth_model,
                         optimizer,
-                        episode_advantage,
+                        total_advantage_ep,
+                        task_advantage_ep,
                         target_tokens,
                         mask,
                         think_mask,
                         gradient_accumulation_steps,
                         input_ids,
+                        config
                     )
                 
                 total_loss += turn_loss
