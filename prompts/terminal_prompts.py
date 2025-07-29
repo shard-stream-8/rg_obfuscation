@@ -14,7 +14,7 @@ MULTI_TURN_TERMINAL_INSTRUCTIONS = """You are in a restricted terminal environme
 - The verifier will return 1.0 for correct answers and 0.0 for incorrect answers
 - Every command you run **must** be accompanied by an explanation of why you ran it.
 
-""" + old_command_examples + """
+""" + new_command_examples_for_judge + """
 
 Generate one command at a time, followed by an explanation of why you ran it. You will see the output of each command before generating the next one.
 
