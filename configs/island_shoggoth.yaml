@@ -1,11 +1,11 @@
 # Naming
 task_name: "largest_island"
 wandb_project_name: "multiturn_island"
-task_name_for_wandb: "penalty"
+task_name_for_wandb: "severed_shog"
 save_rollouts_to_wandb: true
 
 # Spillover mitigations
-sever_gradients: false
+sever_gradients: true
 shoggoth_name: null
 
 # Environment
