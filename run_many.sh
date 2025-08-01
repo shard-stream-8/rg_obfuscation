@@ -21,13 +21,18 @@ for i in $(seq 1 "$NUM_RUNS"); do
   echo "(Output will append to nohup.out)"
   echo "-----------------------------"
 
-  # Run in foreground; nohup ensures the process ignores SIGHUP if the terminal closes.
-  nohup python train.py "$CONFIG_FILE"
+  # Run the training script. The command is placed inside an 'if' so that
+  # we can capture non-zero exit codes without the script aborting due to
+  # 'set -e'. This lets the loop continue even if one run fails.
+  if nohup python train.py "$CONFIG_FILE"; then
+    echo "Run $i completed successfully (exit code 0)."
+  else
+    echo "Run $i FAILED (exit code $?). Continuing to next run."
+  fi
 
-  echo "Run $i completed (exit code $?)."
   echo "============================="
   echo
 
 done
 
-echo "All $NUM_RUNS runs completed." 
+echo "All $NUM_RUNS runs attempted."

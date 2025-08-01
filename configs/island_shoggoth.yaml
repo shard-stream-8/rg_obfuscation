@@ -1,12 +1,12 @@
 # Naming
 task_name: "largest_island"
 wandb_project_name: "multiturn_island"
-task_name_for_wandb: "severed_shog"
-save_rollouts_to_wandb: true
+task_name_for_wandb: "shoggoth"
+save_rollouts_to_wandb: false
 
 # Spillover mitigations
-sever_gradients: true
-shoggoth_name: null
+sever_gradients: false
+shoggoth_name: "Qwen/Qwen3-4B"
 
 # Environment
 wrong_answer: true
