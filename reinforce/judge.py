@@ -304,8 +304,8 @@ class RegexPenalty:
         if self.enabled and self.target_words:
             import re
             for word in self.target_words:
-                # Create case-insensitive pattern that matches whole words
-                pattern = re.compile(r'\b' + re.escape(word) + r'\b', re.IGNORECASE)
+                # Create case-insensitive pattern that matches substrings
+                pattern = re.compile(re.escape(word), re.IGNORECASE)
                 self.word_patterns[word] = pattern
     
     def _filter_cot_content(self, content: str) -> str:
@@ -321,16 +321,22 @@ class RegexPenalty:
         content = re.sub(r'\n\s*\n', '\n', content)
         return content.strip()
     
-    def _filter_commands_and_outputs(self, content: str) -> str:
-        """Filter out commands and terminal outputs from the response."""
+    def _extract_command_content(self, content: str) -> str:
+        """Extracts and combines content from within all <command> tags."""
         import re
-        # Remove content between <command> and </command> tags
-        content = re.sub(r'<command>.*?</command>', '', content, flags=re.DOTALL)
-        # Remove any remaining command tags
-        content = re.sub(r'</?command>', '', content)
-        # Clean up extra whitespace
-        content = re.sub(r'\n\s*\n', '\n', content)
-        return content.strip()
+        matches = re.findall(r'<command>(.*?)</command>', content, flags=re.DOTALL)
+        return "\n".join(matches)
+    
+    # def _filter_commands_and_outputs(self, content: str) -> str:
+    #     """Filter out commands and terminal outputs from the response."""
+    #     import re
+    #     # Remove content between <command> and </command> tags
+    #     content = re.sub(r'<command>.*?</command>', '', content, flags=re.DOTALL)
+    #     # Remove any remaining command tags
+    #     content = re.sub(r'</?command>', '', content)
+    #     # Clean up extra whitespace
+    #     content = re.sub(r'\n\s*\n', '\n', content)
+    #     return content.strip()
     
     def _extract_dialogue(self, conversation_dialogue: list) -> str:
         """Extract all assistant outputs (excluding commands) for penalty evaluation."""
@@ -340,7 +346,7 @@ class RegexPenalty:
             if msg['role'] == 'assistant':
                 # Filter out CoT content and commands from the assistant's response
                 filtered_content = self._filter_cot_content(msg['content'])
-                filtered_content = self._filter_commands_and_outputs(filtered_content)
+                filtered_content = self._extract_command_content(filtered_content)
                 if filtered_content.strip():
                     all_explanations.append(filtered_content.strip())
         
@@ -362,7 +368,7 @@ class RegexPenalty:
                 content_to_check = self._extract_dialogue(conversation_dialogue)
             else:
                 filtered_response = self._filter_cot_content(response)
-                content_to_check = self._filter_commands_and_outputs(filtered_response)
+                content_to_check = self._extract_command_content(filtered_response)
             
             if not content_to_check or not content_to_check.strip():
                 # No content to check - no penalty
